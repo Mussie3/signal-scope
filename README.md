@@ -28,7 +28,7 @@ A bunch of things on the roadmap aren't built yet. See the bottom.
 src/
 ├── app/          entry + global setup
 ├── features/     one folder per domain
-│   ├── map/        Leaflet rendering
+│   ├── map/        rendering
 │   ├── entities/   data model + store
 │   ├── simulation/ the loop that mutates state
 │   ├── alerts/     events triggered by entity changes
