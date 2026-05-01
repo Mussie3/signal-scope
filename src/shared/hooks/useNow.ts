@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 
 export const useNow = () => {
-    const [now, setNow] = useState(Date.now())
+    const [now, setNow] = useState(() => Date.now())
     
     useEffect(() => {
         const tick = () => {
