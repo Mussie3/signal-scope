@@ -4,6 +4,8 @@ import ApiIcon from "@/shared/ui/icons/ApiIcon"
 import CacheIcon from "@/shared/ui/icons/CacheIcon"
 import DatabaseIcon from "@/shared/ui/icons/DatabaseIcon"
 
+interface Props { service: Service }
+
 const shapeByKind = (kind: ServiceKind, fill: string, iconFill: string) => {
     switch(kind){
         case "api":
@@ -15,9 +17,7 @@ const shapeByKind = (kind: ServiceKind, fill: string, iconFill: string) => {
     }
 }
 
-
-
-const ServiceNode = (props: Service) => {
+const ServiceNode = (props: Props) => {
 
     const theme = useThemeStore(state => state.theme)
     const isDark = theme == "dark"
@@ -25,9 +25,9 @@ const ServiceNode = (props: Service) => {
     const iconFill = !isDark ? "#fff" : "#000"
 
     return (
-        <g transform={`translate(${props.position.x}, ${props.position.y})`}>
-            {shapeByKind(props.kind, fill, iconFill)}
-            <text x={0} y={24} textAnchor="middle" fill={fill}>{props.name}</text>
+        <g transform={`translate(${props.service.position.x}, ${props.service.position.y})`}>
+            {shapeByKind(props.service.kind, fill, iconFill)}
+            <text x={0} y={32} textAnchor="middle" fill={fill}>{props.service.name}</text>
         </g>
     )
 }
