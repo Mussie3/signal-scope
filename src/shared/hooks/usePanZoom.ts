@@ -1,13 +1,14 @@
-import { useRef, useState } from "react"
+import React, { useRef, useState } from "react"
 
-type PanHandlers<T extends Element> = {
+type PanZoomHandlers<T extends Element> = {
     onPointerDown: React.PointerEventHandler<T>
     onPointerMove: React.PointerEventHandler<T>
     onPointerUp: React.PointerEventHandler<T>
     onPointerLeave: React.PointerEventHandler<T>
+    onWheel: React.WheelEventHandler<T>
 }
 
-const usePan = <T extends Element = Element>() => {
+const usePanZoom = <T extends Element = Element>() => {
     const [isDragging, setIsDragging] = useState(false)
     const [panValue, setPanValue] = useState({
         x: 0,
@@ -16,6 +17,7 @@ const usePan = <T extends Element = Element>() => {
     const dragStart = useRef({
         x: 0, y: 0, panX: 0, panY: 0
     })
+    const [zoom, setZoom] = useState(1)
 
     const handlePointerDown = (event: React.PointerEvent<T>) => {
         setIsDragging(true)
@@ -37,18 +39,25 @@ const usePan = <T extends Element = Element>() => {
         setIsDragging(false)
     }
 
-    const panHandlers: PanHandlers<T> = {
+    const handleWheel = (event: React.WheelEvent<T>) => {
+        event.preventDefault()
+        setZoom(prev => Math.max(0.25, Math.min(4, prev * (1 - event.deltaY * 0.001))))
+    }
+
+    const panZoomHandlers: PanZoomHandlers<T> = {
         onPointerDown: handlePointerDown,
         onPointerMove: handlePointerMove,
         onPointerUp: handlePointerUp,
-        onPointerLeave: handlePointerUp
+        onPointerLeave: handlePointerUp,
+        onWheel: handleWheel
     }
 
     return {
         pan: panValue,
+        zoom,
         isDragging,
-        panHandlers
+        panZoomHandlers
     }
 }
 
-export default usePan
+export default usePanZoom

@@ -2,17 +2,17 @@ import { useThemeStore } from "@/shared/store/theme.store"
 import ConnectionEdge from "./ConnectionEdge"
 import { seedServices, seedConnections } from "./seed"
 import ServiceNode from "./ServiceNode"
-import usePan from "@/shared/hooks/usePan"
+import usePanZoom from "@/shared/hooks/usePanZoom"
 
 const MapView = () => {
 
     const theme = useThemeStore(state => state.theme)
-    const { pan, isDragging, panHandlers } = usePan()
+    const { pan, zoom, isDragging, panZoomHandlers } = usePanZoom()
     const isDark = theme === "dark"
 
     return (
-        <svg {...panHandlers} width="100%" height="100%" className={isDark ? "bg-[#000]" : "bg-[#fff]"} style={{ cursor: isDragging ? "grabbing" : "grab" }}>
-            <g transform={`translate(${pan.x} ${pan.y})`}>
+        <svg {...panZoomHandlers} width="100%" height="100%" className={isDark ? "bg-[#000]" : "bg-[#fff]"} style={{ cursor: isDragging ? "grabbing" : "grab" }}>
+            <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
                 {seedConnections.map(connection => (
                     <ConnectionEdge
                     key={connection.id}
