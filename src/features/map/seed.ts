@@ -4,60 +4,42 @@ const Frontend: Service = {
     id: "frontend",
     name: "Frontend",
     kind: "api",
-    position: {
-        x: 50,
-        y: 50
-    }
+    position: { x: 500, y: 100 },
 }
 
 const AuthAPI: Service = {
     id: "auth-api",
     name: "Auth API",
     kind: "api",
-    position: {
-        x: 150,
-        y: 100
-    }
-}
-
-const UserDB: Service = {
-    id: "user-db",
-    name: "User DB",
-    kind: "database",
-    position: {
-        x: 350,
-        y: 100
-    } 
+    position: { x: 280, y: 280 },
 }
 
 const ProductAPI: Service = {
     id: "product-api",
     name: "Product API",
     kind: "api",
-    position: {
-        x: 100,
-        y: 350
-    }
+    position: { x: 720, y: 280 },
+}
+
+const UserDB: Service = {
+    id: "user-db",
+    name: "User DB",
+    kind: "database",
+    position: { x: 200, y: 480 },
 }
 
 const ProductDB: Service = {
     id: "product-db",
     name: "Product DB",
     kind: "database",
-    position: {
-        x: 400,
-        y: 450
-    }
+    position: { x: 620, y: 480 },
 }
 
 const ProductCache: Service = {
     id: "product-cache",
     name: "Product Cache",
     kind: "cache",
-    position: {
-        x: 700,
-        y: 50
-    }
+    position: { x: 870, y: 480 },
 }
 
 const FrontendAuthAPIConnection: Connection = {
