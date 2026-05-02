@@ -1,12 +1,11 @@
 import { useThemeStore } from "@/shared/store/theme.store"
+import usePanZoom from "@/shared/hooks/usePanZoom"
+import { useMapStore } from "../store"
 import ConnectionEdge from "./ConnectionEdge"
 import ServiceNode from "./ServiceNode"
-import usePanZoom from "@/shared/hooks/usePanZoom"
-import { useMapStore } from "./store"
 
 const MapView = () => {
-
-    const theme = useThemeStore(state => state.theme)
+    const theme = useThemeStore(s => s.theme)
     const servicesById = useMapStore(s => s.servicesById)
     const connectionsById = useMapStore(s => s.connectionsById)
     const serviceIds = useMapStore(s => s.serviceIds)
@@ -16,7 +15,11 @@ const MapView = () => {
     const setLayoutMode = useMapStore(s => s.setLayoutMode)
 
     const { pan, zoom, isDragging, panZoomHandlers, reset } = usePanZoom<SVGSVGElement>()
+
     const isDark = theme === "dark"
+    const isReset = pan.x === 0 && pan.y === 0 && zoom === 1
+    const isAuto = layoutMode === "auto"
+
     const arrowFill = isDark ? "#fff" : "#000"
     const gridDotFill = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.10)"
     const canvasBg = isDark ? "bg-[#050505]" : "bg-[#f7f7f8]"
@@ -26,8 +29,6 @@ const MapView = () => {
     const overlayActive = isDark
         ? "bg-white/[0.18] hover:bg-white/[0.22] border-white/30 text-white backdrop-blur-sm"
         : "bg-black/[0.85] hover:bg-black border-black text-white backdrop-blur-sm"
-    const isReset = pan.x === 0 && pan.y === 0 && zoom === 1
-    const isAuto = layoutMode === "auto"
 
     return (
         <div className="relative w-full h-full">
@@ -73,17 +74,18 @@ const MapView = () => {
                 <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
                     {connectionIds.map(id => {
                         const c = connectionsById[id]
-                        return <ConnectionEdge
-                            key={c.id}
-                            connection={c}
-                            source={servicesById[c.sourceId]}
-                            target={servicesById[c.targetId]}
-                        />
+                        return (
+                            <ConnectionEdge
+                                key={c.id}
+                                connection={c}
+                                source={servicesById[c.sourceId]}
+                                target={servicesById[c.targetId]}
+                            />
+                        )
                     })}
-                    {serviceIds.map(id => {
-                        const s = servicesById[id]
-                        return <ServiceNode service={s} key={s.id} />
-                    })}
+                    {serviceIds.map(id => (
+                        <ServiceNode key={id} service={servicesById[id]} />
+                    ))}
                 </g>
             </svg>
             <div className="absolute top-3 right-3 flex items-center gap-2">

@@ -1,52 +1,47 @@
 import { useThemeStore } from "@/shared/store/theme.store"
-import { Connection, Service } from "./types"
 import { useNow } from "@/shared/hooks/useNow"
-import { useMapStore } from "./store"
-import { useFilterStore } from "@/shared/store/filter.store"
-import { ANIMATION_DURATION_MS, NODE_EDGE_OFFSET } from "./constants"
+import { useMapStore } from "../store"
+import { useIsConnectionInRegion } from "../hooks/useRegionFilter"
+import { ANIMATION_DURATION_MS, NODE_EDGE_OFFSET } from "../constants"
+import type { Connection, Service } from "../types"
 
 interface Props {
-    connection: Connection,
-    source: Service,
+    connection: Connection
+    source: Service
     target: Service
 }
 
-const ConnectionEdge = (props: Props) => {
-
+const ConnectionEdge = ({ connection, source, target }: Props) => {
     const now = useNow()
-    const theme = useThemeStore(state => state.theme)
+    const theme = useThemeStore(s => s.theme)
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
-    const region = useFilterStore(s => s.region)
+    const isInRegion = useIsConnectionInRegion(source, target)
     const isDark = theme === "dark"
     const baseStroke = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)"
     const dotFill = isDark ? "#ffffff" : "#1f2937"
 
     const isHighlighted = selectedServiceId !== null && (
-        props.connection.sourceId === selectedServiceId ||
-        props.connection.targetId === selectedServiceId
+        connection.sourceId === selectedServiceId ||
+        connection.targetId === selectedServiceId
     )
     const isDimmedBySelection = selectedServiceId !== null && !isHighlighted
-
-    const isInRegion = region === "All Region" ||
-        props.source.region === region ||
-        props.target.region === region
     const isDimmedByRegion = !isInRegion
 
     const opacity = isDimmedByRegion ? 0.12 : isDimmedBySelection ? 0.18 : 1
     const strokeWidth = isHighlighted ? 2.5 : 1.5
 
-    const dx = props.target.position.x - props.source.position.x
-    const dy = props.target.position.y - props.source.position.y
+    const dx = target.position.x - source.position.x
+    const dy = target.position.y - source.position.y
     const distance = Math.sqrt(dx * dx + dy * dy) || 1
     const ux = dx / distance
     const uy = dy / distance
 
-    const x1 = props.source.position.x + ux * NODE_EDGE_OFFSET
-    const y1 = props.source.position.y + uy * NODE_EDGE_OFFSET
-    const x2 = props.target.position.x - ux * NODE_EDGE_OFFSET
-    const y2 = props.target.position.y - uy * NODE_EDGE_OFFSET
+    const x1 = source.position.x + ux * NODE_EDGE_OFFSET
+    const y1 = source.position.y + uy * NODE_EDGE_OFFSET
+    const x2 = target.position.x - ux * NODE_EDGE_OFFSET
+    const y2 = target.position.y - uy * NODE_EDGE_OFFSET
 
-    const inFlight = props.connection.buffer.filter(e => now - e.timestamp < ANIMATION_DURATION_MS)
+    const inFlight = connection.buffer.filter(e => now - e.timestamp < ANIMATION_DURATION_MS)
 
     return (
         <g style={{ opacity }}>

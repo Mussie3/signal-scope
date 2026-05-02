@@ -1,6 +1,14 @@
 import { DOWN_AGE_MS, FAILING_ERROR_RATE, SLOW_LATENCY_MS } from "./constants";
 import { Connection, ServiceStatus } from "./types";
 
+export const STATUS_LABEL: Record<ServiceStatus, string> = {
+    healthy: "Healthy",
+    slow: "Slow",
+    failing: "Failing",
+    down: "Down",
+    no_data: "No data",
+}
+
 export const deriveServiceStatus = (
     incoming: Connection[],
     now: number,
