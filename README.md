@@ -4,15 +4,17 @@ A real-time service-map visualization for distributed systems. SignalScope rende
 
 ## Current state
 
-The static rendering layer is in place:
+The MVP feature set is in place:
 
-- Pannable SVG canvas with light and dark themes
-- Six seeded services (frontend, two APIs, two databases, one cache) with five directed connections
+- Six-service seeded topology (frontend, two APIs, two databases, one cache) with five directed connections
+- Pannable, zoomable SVG canvas with light and dark themes
+- In-process simulation engine producing request events at 250ms intervals with a 5% error rate and varying latency
+- Animated in-flight request dots that travel from source to target along each connection
+- Status derived in real time from rolling event windows (`healthy` / `slow` / `failing` / `down` / `no_data`) using configurable thresholds
+- Status-driven node coloring; chip color tracks system health
 - Per-kind node rendering: circle for APIs, rounded rectangle for databases, diamond for caches; each chip carries an icon centered inside
 - Reusable theme system, dropdown primitive with outside-click and Escape dismissal, and a small SVG icon library
 - Centralized state via Zustand stores with selective subscriptions
-
-The simulation engine, animated request flow, and status-driven coloring are tracked in **Roadmap** below.
 
 ## Stack
 
@@ -27,10 +29,10 @@ The simulation engine, animated request flow, and status-driven coloring are tra
 src/
 ├── app/             entry point
 ├── features/
-│   ├── map/         types, seed data, MapView and its child components
+│   ├── map/         types, seed, store, simulation, status, MapView and children
 │   └── ui/          top-level layout (TopBar)
 ├── shared/
-│   ├── hooks/       useDismiss, usePan
+│   ├── hooks/       useDismiss, usePanZoom, useNow
 │   ├── store/       theme and filter Zustand stores
 │   ├── types/       cross-cutting type definitions
 │   └── ui/          shared components (Search, ToggleButton, DropDown, icons)
@@ -56,13 +58,10 @@ npm run build
 
 In rough priority order:
 
-- Mouse-wheel zoom with cursor anchoring
-- Simulation engine that produces request events on connections
-- Animated in-flight requests as dots traveling along edges
-- Status-driven node coloring (healthy / slow / failing / down / no_data) derived from rolling event windows
-- Arrowheads on directed edges
 - Sidebar with service list and filters
-- Right panel with selected-service details (latency, error rate, traffic)
+- Right panel with selected-service details (latency, error rate, traffic, last seen)
+- Arrowheads on directed edges with proper endpoint offset against the chip
+- Cursor-anchored zoom
 - Force-directed auto-layout option
 - Replace the simulation with a real WebSocket feed once the visualization is solid
 
