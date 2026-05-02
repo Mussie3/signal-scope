@@ -12,6 +12,8 @@ const MapView = () => {
     const serviceIds = useMapStore(s => s.serviceIds)
     const connectionIds = useMapStore(s => s.connectionIds)
     const selectService = useMapStore(s => s.selectService)
+    const layoutMode = useMapStore(s => s.layoutMode)
+    const setLayoutMode = useMapStore(s => s.setLayoutMode)
 
     const { pan, zoom, isDragging, panZoomHandlers, reset } = usePanZoom<SVGSVGElement>()
     const isDark = theme === "dark"
@@ -21,7 +23,11 @@ const MapView = () => {
     const overlayButton = isDark
         ? "bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white backdrop-blur-sm"
         : "bg-white/80 hover:bg-white border-black/10 text-black backdrop-blur-sm shadow-sm"
+    const overlayActive = isDark
+        ? "bg-white/[0.18] hover:bg-white/[0.22] border-white/30 text-white backdrop-blur-sm"
+        : "bg-black/[0.85] hover:bg-black border-black text-white backdrop-blur-sm"
     const isReset = pan.x === 0 && pan.y === 0 && zoom === 1
+    const isAuto = layoutMode === "auto"
 
     return (
         <div className="relative w-full h-full">
@@ -80,16 +86,26 @@ const MapView = () => {
                     })}
                 </g>
             </svg>
-            {!isReset && (
+            <div className="absolute top-3 right-3 flex items-center gap-2">
                 <button
                     type="button"
-                    onClick={reset}
-                    className={`absolute top-3 right-3 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${overlayButton}`}
-                    aria-label="Reset view"
+                    onClick={() => setLayoutMode(isAuto ? "manual" : "auto")}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${isAuto ? overlayActive : overlayButton}`}
+                    aria-pressed={isAuto}
                 >
-                    Reset view
+                    Auto layout
                 </button>
-            )}
+                {!isReset && (
+                    <button
+                        type="button"
+                        onClick={reset}
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${overlayButton}`}
+                        aria-label="Reset view"
+                    >
+                        Reset view
+                    </button>
+                )}
+            </div>
             <div className={`absolute bottom-3 right-3 px-2 py-1 rounded-md border text-[10px] tabular-nums ${overlayButton}`}>
                 {Math.round(zoom * 100)}%
             </div>
