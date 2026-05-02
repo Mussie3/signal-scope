@@ -1,6 +1,7 @@
 import { useThemeStore } from "@/shared/store/theme.store"
 import { Connection, Service } from "./types"
 import { useNow } from "@/shared/hooks/useNow"
+import { useMapStore } from "./store"
 import { ANIMATION_DURATION_MS, NODE_EDGE_OFFSET } from "./constants"
 
 interface Props {
@@ -13,8 +14,17 @@ const ConnectionEdge = (props: Props) => {
 
     const now = useNow()
     const theme = useThemeStore(state => state.theme)
+    const selectedServiceId = useMapStore(s => s.selectedServiceId)
     const isDark = theme === "dark"
-    const stroke = isDark ? "#fff" : "#000"
+    const baseStroke = isDark ? "#fff" : "#000"
+    const isHighlighted = selectedServiceId !== null && (
+        props.connection.sourceId === selectedServiceId ||
+        props.connection.targetId === selectedServiceId
+    )
+    const isDimmed = selectedServiceId !== null && !isHighlighted
+    const stroke = baseStroke
+    const opacity = isDimmed ? 0.2 : 1
+    const strokeWidth = isHighlighted ? 3 : 2
 
     const dx = props.target.position.x - props.source.position.x
     const dy = props.target.position.y - props.source.position.y
@@ -30,10 +40,10 @@ const ConnectionEdge = (props: Props) => {
     const inFlight = props.connection.buffer.filter(e => now - e.timestamp < ANIMATION_DURATION_MS)
 
     return (
-        <g>
+        <g style={{ opacity }}>
             <line
                 stroke={stroke}
-                strokeWidth={2}
+                strokeWidth={strokeWidth}
                 x1={x1}
                 y1={y1}
                 x2={x2}
