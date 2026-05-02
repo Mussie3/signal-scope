@@ -26,41 +26,45 @@ const DropDown = ({ label, items }: DropDownProps) => {
         : "bg-white border-black/10 text-black"
 
     const itemStyles = isDark ? "hover:bg-white/[0.08]" : "hover:bg-black/[0.05]"
+    const itemSelected = isDark ? "bg-white/[0.08]" : "bg-black/[0.05]"
 
     return (
-        <div className="relative inline-block w-35" ref={ref}>
+        <div className="relative inline-block" ref={ref}>
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={open}
-                className={`w-35 h-10 px-3 flex items-center gap-2 rounded-xl border transition-colors focus:outline-none focus-visible:ring-2 ${triggerStyles}`}
+                className={`h-10 px-3 flex items-center gap-2 rounded-xl border transition-colors focus:outline-none focus-visible:ring-2 ${triggerStyles}`}
             >
-                <span className="w-25 text-left text-sm">{label}</span>
+                <span className="text-sm whitespace-nowrap">{label}</span>
                 <ChevronDownIcon
-                    className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`}
+                    className={`w-4 h-4 flex-none transition-transform ${open ? "rotate-180" : ""}`}
                 />
             </button>
 
             {open && (
                 <div
                     role="menu"
-                    className={`absolute right-0 top-full mt-2 min-w-full rounded-xl border shadow-lg overflow-hidden ${menuStyles}`}
+                    className={`absolute right-0 top-full mt-2 min-w-max rounded-xl border shadow-lg overflow-hidden z-10 ${menuStyles}`}
                 >
-                    {items.map((item) => (
-                        <button
-                            key={item.label}
-                            type="button"
-                            role="menuitem"
-                            onClick={() => {
-                                item.onSelect()
-                                setOpen(false)
-                            }}
-                            className={`w-full px-3 py-2 text-left text-sm transition-colors ${itemStyles}`}
-                        >
-                            {item.label}
-                        </button>
-                    ))}
+                    {items.map((item) => {
+                        const isSelected = item.label === label
+                        return (
+                            <button
+                                key={item.label}
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                    item.onSelect()
+                                    setOpen(false)
+                                }}
+                                className={`w-full px-3 py-2 text-left text-sm whitespace-nowrap transition-colors ${itemStyles} ${isSelected ? itemSelected : ""}`}
+                            >
+                                {item.label}
+                            </button>
+                        )
+                    })}
                 </div>
             )}
         </div>
