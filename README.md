@@ -2,6 +2,8 @@
 
 A real-time service-map visualization for distributed systems. SignalScope renders the live state of a service mesh — nodes, connections, request flow, latency, errors — as an interactive canvas, instead of via logs or charts.
 
+**Live demo:** https://signal-scope-gamma.vercel.app/
+
 ## Current state
 
 - Six-service seeded topology (frontend, two APIs, two databases, one cache) with five directed connections, spread across four regions
