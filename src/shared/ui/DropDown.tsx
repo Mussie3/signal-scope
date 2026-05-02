@@ -46,7 +46,7 @@ const DropDown = ({ label, items }: DropDownProps) => {
             {open && (
                 <div
                     role="menu"
-                    className={`absolute right-0 top-full mt-2 min-w-max rounded-xl border shadow-lg overflow-hidden z-10 ${menuStyles}`}
+                    className={`absolute right-0 top-full mt-1 min-w-full rounded-lg border shadow-lg overflow-hidden z-10 py-1 ${menuStyles}`}
                 >
                     {items.map((item) => {
                         const isSelected = item.label === label
@@ -59,7 +59,7 @@ const DropDown = ({ label, items }: DropDownProps) => {
                                     item.onSelect()
                                     setOpen(false)
                                 }}
-                                className={`w-full px-3 py-2 text-left text-sm whitespace-nowrap transition-colors ${itemStyles} ${isSelected ? itemSelected : ""}`}
+                                className={`w-full px-3 py-1.5 text-left text-sm whitespace-nowrap transition-colors ${itemStyles} ${isSelected ? itemSelected : ""}`}
                             >
                                 {item.label}
                             </button>
