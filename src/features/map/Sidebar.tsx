@@ -5,6 +5,7 @@ import { useThemeStore } from "@/shared/store/theme.store"
 import { useFilterStore } from "@/shared/store/filter.store"
 import { deriveServiceStatus } from "./status"
 import { STATUS_COLORS } from "./constants"
+import { RANGE_TO_MS } from "@/shared/types/filter"
 import ApiIcon from "@/shared/ui/icons/ApiIcon"
 import DatabaseIcon from "@/shared/ui/icons/DatabaseIcon"
 import CacheIcon from "@/shared/ui/icons/CacheIcon"
@@ -31,14 +32,18 @@ const Sidebar = () => {
     const selectService = useMapStore(s => s.selectService)
     const theme = useThemeStore(s => s.theme)
     const search = useFilterStore(s => s.search)
+    const region = useFilterStore(s => s.region)
+    const range = useFilterStore(s => s.range)
     const now = useNow()
 
+    const rangeMs = RANGE_TO_MS[range]
     const query = search.trim().toLowerCase()
-    const filteredServices = query
-        ? services.filter(s =>
-            s.name.toLowerCase().includes(query) || s.kind.includes(query),
-        )
-        : services
+
+    const filteredServices = services.filter(s => {
+        if (region !== "All Region" && s.region !== region) return false
+        if (query && !s.name.toLowerCase().includes(query) && !s.kind.includes(query)) return false
+        return true
+    })
 
     const isDark = theme === "dark"
     const containerStyles = isDark
@@ -54,30 +59,34 @@ const Sidebar = () => {
         ? "bg-white/[0.08] text-white/80"
         : "bg-black/[0.05] text-black/70"
     const dividerColor = isDark ? "border-white/[0.06]" : "border-black/[0.04]"
+    const headerBg = isDark ? "bg-[#0a0a0a]/90" : "bg-white/90"
 
     return (
         <aside className={`w-64 flex-none h-full border-r overflow-y-auto ${containerStyles}`}>
-            <div className={`flex items-center justify-between px-4 pt-5 pb-3 border-b ${dividerColor} sticky top-0 backdrop-blur-md ${isDark ? "bg-[#0a0a0a]/90" : "bg-white/90"}`}>
-                <div className="flex items-baseline gap-2">
-                    <h2 className="text-xs uppercase tracking-[0.12em] font-semibold opacity-70">
-                        Services
-                    </h2>
-                </div>
+            <div className={`flex items-center justify-between px-4 pt-5 pb-3 border-b ${dividerColor} sticky top-0 backdrop-blur-md ${headerBg}`}>
+                <h2 className="text-xs uppercase tracking-[0.12em] font-semibold opacity-70">
+                    Services
+                </h2>
                 <span className={`text-[11px] tabular-nums px-2 py-0.5 rounded-md ${countBadge}`}>
                     {filteredServices.length}
-                    {query && ` / ${services.length}`}
+                    {filteredServices.length !== services.length && ` / ${services.length}`}
                 </span>
             </div>
             <ul className="px-2 py-2 space-y-0.5">
                 {filteredServices.length === 0 && (
                     <li className="px-3 py-8 text-sm opacity-50 text-center">
                         No services match
-                        <div className="font-medium mt-1 truncate">"{search}"</div>
+                        {query && (
+                            <div className="font-medium mt-1 truncate">"{search}"</div>
+                        )}
+                        {region !== "All Region" && (
+                            <div className="font-medium mt-1">in {region}</div>
+                        )}
                     </li>
                 )}
                 {filteredServices.map(service => {
                     const incoming = connections.filter(c => c.targetId === service.id)
-                    const status = deriveServiceStatus(incoming, now)
+                    const status = deriveServiceStatus(incoming, now, rangeMs)
                     const color = STATUS_COLORS[status]
                     const Icon = KIND_ICON[service.kind]
                     const isSelected = selectedServiceId === service.id
@@ -102,7 +111,7 @@ const Sidebar = () => {
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm font-medium truncate">{service.name}</div>
                                     <div className="text-[10px] uppercase tracking-wider opacity-50 mt-0.5">
-                                        {service.kind} · {STATUS_LABEL[status]}
+                                        {service.region} · {STATUS_LABEL[status]}
                                     </div>
                                 </div>
                             </button>

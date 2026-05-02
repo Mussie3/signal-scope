@@ -1,3 +1,5 @@
+import type { ServiceRegion } from "@/shared/types/filter"
+
 export type ServiceKind = "api" | "database" | "cache"
 export type Position = {
     x: number,
@@ -7,6 +9,7 @@ export type Service = {
     id: string,
     name: string,
     kind: ServiceKind,
+    region: ServiceRegion,
     position: Position
 }
 export type RequestEvent = {

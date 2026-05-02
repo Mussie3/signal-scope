@@ -1,31 +1,41 @@
 import { useFilterStore } from "@/shared/store/filter.store"
 import { useThemeStore } from "@/shared/store/theme.store"
 import { DropDownItem } from "@/shared/types/component"
+import { Range, Region } from "@/shared/types/filter"
 import DropDown from "@/shared/ui/DropDown"
 import Search from "@/shared/ui/Search"
 import ToggleButton from "@/shared/ui/ToggleButton"
 import SignalScopeIcon from "@/shared/ui/icons/SignalScopeIcon"
+
+const REGIONS: Region[] = [
+    "All Region",
+    "US East",
+    "US West",
+    "EU Central",
+    "Asia Pacific",
+]
+
+const RANGES: Range[] = [
+    "Last 30 seconds",
+    "Last 1 minute",
+    "Last 5 minutes",
+    "Last 15 minutes",
+]
 
 const TopBar = () => {
     const theme = useThemeStore((state) => state.theme)
     const { region, setRegion, range, setRange } = useFilterStore()
     const isDark = theme === "dark"
 
-    const dropdownRegionItems: DropDownItem[] = [
-        { label: "All Region", onSelect: () => setRegion("All Region") },
-        { label: "US East", onSelect: () => setRegion("US East") },
-        { label: "US West", onSelect: () => setRegion("US West") },
-        { label: "EU Central", onSelect: () => setRegion("EU Central") },
-        { label: "Asia Pacific", onSelect: () => setRegion("Asia Pacific") },
-    ]
+    const dropdownRegionItems: DropDownItem[] = REGIONS.map(r => ({
+        label: r,
+        onSelect: () => setRegion(r),
+    }))
 
-    const dropdownRangeItems: DropDownItem[] = [
-        { label: "Last 1 minute", onSelect: () => setRange("Last 1 minute") },
-        { label: "Last 5 minutes", onSelect: () => setRange("Last 5 minutes") },
-        { label: "Last 15 minutes", onSelect: () => setRange("Last 15 minutes") },
-        { label: "Last 1 hour", onSelect: () => setRange("Last 1 hour") },
-        { label: "Last 24 hours", onSelect: () => setRange("Last 24 hours") },
-    ]
+    const dropdownRangeItems: DropDownItem[] = RANGES.map(r => ({
+        label: r,
+        onSelect: () => setRange(r),
+    }))
 
     return (
         <section

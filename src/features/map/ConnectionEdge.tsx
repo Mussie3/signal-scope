@@ -2,6 +2,7 @@ import { useThemeStore } from "@/shared/store/theme.store"
 import { Connection, Service } from "./types"
 import { useNow } from "@/shared/hooks/useNow"
 import { useMapStore } from "./store"
+import { useFilterStore } from "@/shared/store/filter.store"
 import { ANIMATION_DURATION_MS, NODE_EDGE_OFFSET } from "./constants"
 
 interface Props {
@@ -15,15 +16,23 @@ const ConnectionEdge = (props: Props) => {
     const now = useNow()
     const theme = useThemeStore(state => state.theme)
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
+    const region = useFilterStore(s => s.region)
     const isDark = theme === "dark"
     const baseStroke = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)"
     const dotFill = isDark ? "#ffffff" : "#1f2937"
+
     const isHighlighted = selectedServiceId !== null && (
         props.connection.sourceId === selectedServiceId ||
         props.connection.targetId === selectedServiceId
     )
-    const isDimmed = selectedServiceId !== null && !isHighlighted
-    const opacity = isDimmed ? 0.18 : 1
+    const isDimmedBySelection = selectedServiceId !== null && !isHighlighted
+
+    const isInRegion = region === "All Region" ||
+        props.source.region === region ||
+        props.target.region === region
+    const isDimmedByRegion = !isInRegion
+
+    const opacity = isDimmedByRegion ? 0.12 : isDimmedBySelection ? 0.18 : 1
     const strokeWidth = isHighlighted ? 2.5 : 1.5
 
     const dx = props.target.position.x - props.source.position.x

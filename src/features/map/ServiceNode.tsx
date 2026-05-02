@@ -9,6 +9,8 @@ import { useNow } from "@/shared/hooks/useNow"
 import { deriveServiceStatus } from "./status"
 import { STATUS_COLORS } from "./constants"
 import { useThemeStore } from "@/shared/store/theme.store"
+import { useFilterStore } from "@/shared/store/filter.store"
+import { RANGE_TO_MS } from "@/shared/types/filter"
 
 interface Props { service: Service }
 
@@ -37,11 +39,17 @@ const ServiceNode = (props: Props) => {
     ))
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
     const selectService = useMapStore(s => s.selectService)
+    const region = useFilterStore(s => s.region)
+    const range = useFilterStore(s => s.range)
     const now = useNow()
-    const status = deriveServiceStatus(incoming, now)
+    const rangeMs = RANGE_TO_MS[range]
+    const status = deriveServiceStatus(incoming, now, rangeMs)
     const fill = STATUS_COLORS[status]
     const isSelected = selectedServiceId === props.service.id
     const [isHovered, setIsHovered] = useState(false)
+
+    const isInRegion = region === "All Region" || props.service.region === region
+    const opacity = isInRegion ? 1 : 0.25
 
     return (
         <g
@@ -49,7 +57,7 @@ const ServiceNode = (props: Props) => {
             onClick={(e) => { e.stopPropagation(); selectService(props.service.id) }}
             onPointerEnter={() => setIsHovered(true)}
             onPointerLeave={() => setIsHovered(false)}
-            style={{ cursor: "pointer" }}
+            style={{ cursor: "pointer", opacity }}
         >
             {(isSelected || isHovered) && (
                 <circle

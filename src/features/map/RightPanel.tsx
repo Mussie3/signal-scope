@@ -2,8 +2,10 @@ import { useShallow } from "zustand/shallow"
 import { useMapStore } from "./store"
 import { useNow } from "@/shared/hooks/useNow"
 import { useThemeStore } from "@/shared/store/theme.store"
+import { useFilterStore } from "@/shared/store/filter.store"
 import { deriveServiceStatus } from "./status"
-import { STATUS_COLORS, PRUNE_WINDOW_LABEL_S } from "./constants"
+import { STATUS_COLORS } from "./constants"
+import { RANGE_TO_MS } from "@/shared/types/filter"
 import type { ServiceStatus } from "./types"
 
 const STATUS_LABEL: Record<ServiceStatus, string> = {
@@ -35,8 +37,10 @@ const RightPanel = () => {
     ))
     const selectService = useMapStore(s => s.selectService)
     const theme = useThemeStore(s => s.theme)
+    const range = useFilterStore(s => s.range)
     const now = useNow()
 
+    const rangeMs = RANGE_TO_MS[range]
     const isDark = theme === "dark"
     const containerStyles = isDark
         ? "bg-[#0a0a0a] border-white/10 text-white"
@@ -66,20 +70,21 @@ const RightPanel = () => {
     }
 
     const allEvents = incoming.flatMap(c => c.buffer)
-    const status = deriveServiceStatus(incoming, now)
-    const totalEvents = allEvents.length
-    const errorCount = allEvents.filter(e => !e.success).length
+    const events = allEvents.filter(e => now - e.timestamp <= rangeMs)
+    const status = deriveServiceStatus(incoming, now, rangeMs)
+    const totalEvents = events.length
+    const errorCount = events.filter(e => !e.success).length
     const errorRate = totalEvents > 0 ? errorCount / totalEvents : 0
     const avgLatency = totalEvents > 0
-        ? allEvents.reduce((sum, e) => sum + e.latency, 0) / totalEvents
+        ? events.reduce((sum, e) => sum + e.latency, 0) / totalEvents
         : 0
     const lastSeenAt = totalEvents > 0
-        ? Math.max(...allEvents.map(e => e.timestamp))
+        ? Math.max(...events.map(e => e.timestamp))
         : null
     const lastSeenAgoSec = lastSeenAt !== null
         ? Math.max(0, now - lastSeenAt) / 1000
         : null
-    const eventsPerSecond = totalEvents / PRUNE_WINDOW_LABEL_S
+    const eventsPerSecond = totalEvents / (rangeMs / 1000)
     const statusColor = STATUS_COLORS[status]
 
     return (
@@ -87,7 +92,7 @@ const RightPanel = () => {
             <div className={`flex items-start justify-between px-5 pt-5 pb-4 border-b ${dividerColor}`}>
                 <div className="min-w-0 flex-1">
                     <div className="text-[10px] uppercase tracking-[0.14em] opacity-50 mb-1.5">
-                        {service.kind}
+                        {service.kind} · {service.region}
                     </div>
                     <h2 className="text-lg font-semibold truncate">{service.name}</h2>
                 </div>
@@ -127,7 +132,7 @@ const RightPanel = () => {
 
             <div className="px-5 pb-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] opacity-50 mb-2">
-                    Last {PRUNE_WINDOW_LABEL_S}s
+                    {range}
                 </div>
                 <div className={`px-3 rounded-lg border ${cardStyles}`}>
                     <Stat label="Events" value={totalEvents.toString()} />
