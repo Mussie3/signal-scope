@@ -1,8 +1,8 @@
 import { useEffect } from "react"
 import { useMapStore } from "./store"
+import { PRUNE_WINDOW_MS } from "./constants"
 
 const TICK_INTERVAL_MS = 250
-const PRUNE_WINDOW_MS = 60_000
 const LATENCY_MIN_MS = 50
 const LATENCY_MAX_MS = 500
 

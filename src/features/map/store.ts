@@ -8,8 +8,10 @@ type MapState = {
     connectionsById: Record<string, Connection>
     serviceIds: string[]
     connectionIds: string[]
+    selectedServiceId: string | null
     pushEvent: (connectionId: string, event: RequestEvent) => void
     pruneEvents: (beforeTimestamp: number) => void
+    selectService: (id: string | null) => void
 }
 
 export const useMapStore = create<MapState>((set) => ({
@@ -17,6 +19,7 @@ export const useMapStore = create<MapState>((set) => ({
     connectionsById: Object.fromEntries(seedConnections.map(c => [c.id, c])),
     serviceIds: seedServices.map(s => s.id),
     connectionIds: seedConnections.map(c => c.id),
+    selectedServiceId: null,
     pushEvent: (connectionId, event) => {
         set((state) => ({
             connectionsById: {
@@ -37,5 +40,6 @@ export const useMapStore = create<MapState>((set) => ({
                 ])
              )
         }))
-    }
+    },
+    selectService: (id) => set({ selectedServiceId: id })
 }))

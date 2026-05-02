@@ -32,12 +32,22 @@ const ServiceNode = (props: Props) => {
             .map(id => state.connectionsById[id])
             .filter(c => c.targetId === props.service.id)
     ))
+    const selectedServiceId = useMapStore(s => s.selectedServiceId)
+    const selectService = useMapStore(s => s.selectService)
     const now = useNow()
     const status = deriveServiceStatus(incoming, now)
     const fill = STATUS_COLORS[status]
+    const isSelected = selectedServiceId === props.service.id
 
     return (
-        <g transform={`translate(${props.service.position.x}, ${props.service.position.y})`}>
+        <g
+            transform={`translate(${props.service.position.x}, ${props.service.position.y})`}
+            onClick={(e) => { e.stopPropagation(); selectService(props.service.id) }}
+            style={{ cursor: "pointer" }}
+        >
+            {isSelected && (
+                <circle cx={0} cy={0} r={24} fill="none" stroke={textColor} strokeWidth={2} strokeDasharray="3 2" />
+            )}
             {shapeByKind(props.service.kind, fill)}
             <text x={0} y={32} textAnchor="middle" fill={textColor}>{props.service.name}</text>
         </g>
