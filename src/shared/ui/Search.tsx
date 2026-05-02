@@ -1,8 +1,11 @@
+import { useFilterStore } from "@/shared/store/filter.store"
 import { useThemeStore } from "@/shared/store/theme.store"
 import SearchIcon from "@/shared/ui/icons/SearchIcon"
 
 const Search = () => {
     const theme = useThemeStore((state) => state.theme)
+    const search = useFilterStore((state) => state.search)
+    const setSearch = useFilterStore((state) => state.setSearch)
     const isDark = theme === "dark"
 
     return (
@@ -16,7 +19,9 @@ const Search = () => {
             <SearchIcon className="w-5 h-5 opacity-60" />
             <input
                 className="bg-transparent outline-none w-full placeholder:opacity-50"
-                placeholder="Search..."
+                placeholder="Search services..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
             />
         </div>
     )

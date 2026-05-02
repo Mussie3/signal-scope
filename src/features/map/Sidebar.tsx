@@ -2,6 +2,7 @@ import { useShallow } from "zustand/shallow"
 import { useMapStore } from "./store"
 import { useNow } from "@/shared/hooks/useNow"
 import { useThemeStore } from "@/shared/store/theme.store"
+import { useFilterStore } from "@/shared/store/filter.store"
 import { deriveServiceStatus } from "./status"
 import { STATUS_COLORS } from "./constants"
 import ApiIcon from "@/shared/ui/icons/ApiIcon"
@@ -21,7 +22,15 @@ const Sidebar = () => {
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
     const selectService = useMapStore(s => s.selectService)
     const theme = useThemeStore(s => s.theme)
+    const search = useFilterStore(s => s.search)
     const now = useNow()
+
+    const query = search.trim().toLowerCase()
+    const filteredServices = query
+        ? services.filter(s =>
+            s.name.toLowerCase().includes(query) || s.kind.includes(query),
+        )
+        : services
 
     const isDark = theme === "dark"
     const containerStyles = isDark
@@ -40,7 +49,12 @@ const Sidebar = () => {
                 Services
             </div>
             <ul className="px-2 pb-4 space-y-1">
-                {services.map(service => {
+                {filteredServices.length === 0 && (
+                    <li className="px-3 py-6 text-sm opacity-50 text-center">
+                        No services match "{search}"
+                    </li>
+                )}
+                {filteredServices.map(service => {
                     const incoming = connections.filter(c => c.targetId === service.id)
                     const status = deriveServiceStatus(incoming, now)
                     const color = STATUS_COLORS[status]
