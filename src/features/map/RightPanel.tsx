@@ -5,6 +5,13 @@ import { useThemeStore } from "@/shared/store/theme.store"
 import { deriveServiceStatus } from "./status"
 import { STATUS_COLORS, PRUNE_WINDOW_LABEL_S } from "./constants"
 
+const Stat = ({ label, value }: { label: string; value: string }) => (
+    <div className="flex items-center justify-between py-2 border-b border-current/10 last:border-b-0">
+        <span className="text-xs uppercase tracking-wider opacity-60">{label}</span>
+        <span className="text-sm tabular-nums">{value}</span>
+    </div>
+)
+
 const RightPanel = () => {
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
     const service = useMapStore(s =>
@@ -50,15 +57,10 @@ const RightPanel = () => {
     const lastSeenAt = totalEvents > 0
         ? Math.max(...allEvents.map(e => e.timestamp))
         : null
-    const lastSeenAgoSec = lastSeenAt ? (now - lastSeenAt) / 1000 : null
+    const lastSeenAgoSec = lastSeenAt !== null
+        ? Math.max(0, now - lastSeenAt) / 1000
+        : null
     const eventsPerSecond = totalEvents / PRUNE_WINDOW_LABEL_S
-
-    const Stat = ({ label, value }: { label: string; value: string }) => (
-        <div className="flex items-center justify-between py-2 border-b border-current/10 last:border-b-0">
-            <span className="text-xs uppercase tracking-wider opacity-60">{label}</span>
-            <span className="text-sm tabular-nums">{value}</span>
-        </div>
-    )
 
     return (
         <aside className={`w-80 flex-none h-full border-l overflow-y-auto ${containerStyles}`}>
