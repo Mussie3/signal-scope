@@ -64,6 +64,11 @@ const usePanZoom = <T extends Element = Element>() => {
         })
     }
 
+    const reset = () => {
+        setPanValue({ x: 0, y: 0 })
+        setZoom(1)
+    }
+
     const panZoomHandlers: PanZoomHandlers<T> = {
         onPointerDown: handlePointerDown,
         onPointerMove: handlePointerMove,
@@ -77,6 +82,7 @@ const usePanZoom = <T extends Element = Element>() => {
         zoom,
         isDragging,
         panZoomHandlers,
+        reset,
     }
 }
 
