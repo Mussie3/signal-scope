@@ -12,7 +12,7 @@ export const useSimulation = () => {
         const interval = setInterval(() => {
             const { connectionIds, pushEvent, pruneEvents } = useMapStore.getState();
             const randomConnectionId = connectionIds[Math.floor(Math.random() * connectionIds.length)]
-            const randomEvent = { timestamp: Date.now(), success: true, latency: Math.floor(Math.random()*(LATENCY_MAX_MS - LATENCY_MIN_MS) + LATENCY_MIN_MS) }
+            const randomEvent = { timestamp: Date.now(), success: Math.random() > 0.05, latency: Math.floor(Math.random()*(LATENCY_MAX_MS - LATENCY_MIN_MS) + LATENCY_MIN_MS) }
             pushEvent(randomConnectionId, randomEvent)
             pruneEvents(Date.now() - PRUNE_WINDOW_MS)
         }, TICK_INTERVAL_MS)

@@ -20,3 +20,5 @@ export type Connection = {
     targetId: string,
     buffer: RequestEvent[]
 }
+
+export type ServiceStatus = "no_data" | "healthy" | "slow" | "failing" | "down"
