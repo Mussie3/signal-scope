@@ -1,12 +1,12 @@
 import type { Service, Connection, Position } from "./types"
 
 const ITERATIONS = 400
-const REPULSION = 12_000      // node-node push strength
-const SPRING_K = 0.04         // edge attraction stiffness
-const SPRING_LENGTH = 220     // preferred edge length
+const REPULSION = 12_000
+const SPRING_K = 0.04
+const SPRING_LENGTH = 220
 const CENTER_X = 500
 const CENTER_Y = 300
-const CENTER_K = 0.004        // gravity toward viewport center
+const CENTER_K = 0.004
 const DAMPING = 0.85
 const MAX_VELOCITY = 30
 
@@ -17,8 +17,6 @@ export const runForceLayout = (
     const positions: Record<string, Position> = {}
     const velocities: Record<string, Position> = {}
 
-    // Seed the simulation in a circle around the canvas center so we
-    // always converge from a non-degenerate starting state.
     services.forEach((service, index) => {
         const angle = (index / Math.max(services.length, 1)) * Math.PI * 2
         positions[service.id] = {
@@ -32,7 +30,6 @@ export const runForceLayout = (
         const forces: Record<string, Position> = {}
         services.forEach(s => { forces[s.id] = { x: 0, y: 0 } })
 
-        // Pairwise repulsion
         for (let i = 0; i < services.length; i++) {
             for (let j = i + 1; j < services.length; j++) {
                 const a = services[i].id
@@ -53,7 +50,6 @@ export const runForceLayout = (
             }
         }
 
-        // Spring along each connection
         for (const c of connections) {
             const pa = positions[c.sourceId]
             const pb = positions[c.targetId]
@@ -70,14 +66,12 @@ export const runForceLayout = (
             forces[c.targetId].y -= fy
         }
 
-        // Pull toward viewport center to keep the layout bounded
         for (const s of services) {
             const p = positions[s.id]
             forces[s.id].x += (CENTER_X - p.x) * CENTER_K
             forces[s.id].y += (CENTER_Y - p.y) * CENTER_K
         }
 
-        // Integrate with damping and a velocity cap
         for (const s of services) {
             const v = velocities[s.id]
             const f = forces[s.id]
