@@ -8,12 +8,20 @@ import { STATUS_COLORS } from "./constants"
 import ApiIcon from "@/shared/ui/icons/ApiIcon"
 import DatabaseIcon from "@/shared/ui/icons/DatabaseIcon"
 import CacheIcon from "@/shared/ui/icons/CacheIcon"
-import type { ServiceKind } from "./types"
+import type { ServiceKind, ServiceStatus } from "./types"
 
 const KIND_ICON: Record<ServiceKind, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
     api: ApiIcon,
     database: DatabaseIcon,
     cache: CacheIcon,
+}
+
+const STATUS_LABEL: Record<ServiceStatus, string> = {
+    healthy: "Healthy",
+    slow: "Slow",
+    failing: "Failing",
+    down: "Down",
+    no_data: "No data",
 }
 
 const Sidebar = () => {
@@ -35,23 +43,36 @@ const Sidebar = () => {
     const isDark = theme === "dark"
     const containerStyles = isDark
         ? "bg-[#0a0a0a] border-white/10 text-white"
-        : "bg-[#fafafa] border-black/10 text-black"
+        : "bg-white border-black/10 text-black"
     const itemBase = isDark
-        ? "hover:bg-white/[0.06]"
+        ? "hover:bg-white/[0.05]"
         : "hover:bg-black/[0.04]"
     const itemSelected = isDark
-        ? "bg-white/[0.10]"
-        : "bg-black/[0.06]"
+        ? "bg-white/[0.10] hover:bg-white/[0.10]"
+        : "bg-black/[0.06] hover:bg-black/[0.06]"
+    const countBadge = isDark
+        ? "bg-white/[0.08] text-white/80"
+        : "bg-black/[0.05] text-black/70"
+    const dividerColor = isDark ? "border-white/[0.06]" : "border-black/[0.04]"
 
     return (
         <aside className={`w-64 flex-none h-full border-r overflow-y-auto ${containerStyles}`}>
-            <div className="px-4 pt-4 pb-2 text-xs uppercase tracking-wider opacity-60">
-                Services
+            <div className={`flex items-center justify-between px-4 pt-5 pb-3 border-b ${dividerColor} sticky top-0 backdrop-blur-md ${isDark ? "bg-[#0a0a0a]/90" : "bg-white/90"}`}>
+                <div className="flex items-baseline gap-2">
+                    <h2 className="text-xs uppercase tracking-[0.12em] font-semibold opacity-70">
+                        Services
+                    </h2>
+                </div>
+                <span className={`text-[11px] tabular-nums px-2 py-0.5 rounded-md ${countBadge}`}>
+                    {filteredServices.length}
+                    {query && ` / ${services.length}`}
+                </span>
             </div>
-            <ul className="px-2 pb-4 space-y-1">
+            <ul className="px-2 py-2 space-y-0.5">
                 {filteredServices.length === 0 && (
-                    <li className="px-3 py-6 text-sm opacity-50 text-center">
-                        No services match "{search}"
+                    <li className="px-3 py-8 text-sm opacity-50 text-center">
+                        No services match
+                        <div className="font-medium mt-1 truncate">"{search}"</div>
                     </li>
                 )}
                 {filteredServices.map(service => {
@@ -65,17 +86,25 @@ const Sidebar = () => {
                             <button
                                 type="button"
                                 onClick={() => selectService(service.id)}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${itemBase} ${isSelected ? itemSelected : ""}`}
+                                className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${itemBase} ${isSelected ? itemSelected : ""}`}
                             >
-                                <span
-                                    className="inline-block w-2 h-2 rounded-full flex-none"
-                                    style={{ background: color }}
-                                />
-                                <Icon className="w-4 h-4 flex-none opacity-80" />
-                                <span className="flex-1 text-sm truncate">{service.name}</span>
-                                <span className="text-[10px] uppercase tracking-wider opacity-50">
-                                    {service.kind}
+                                <span className="relative flex-none">
+                                    <span
+                                        className="block w-2 h-2 rounded-full"
+                                        style={{ background: color }}
+                                    />
+                                    <span
+                                        className="absolute inset-0 w-2 h-2 rounded-full animate-ping opacity-50"
+                                        style={{ background: color, animationDuration: "2s" }}
+                                    />
                                 </span>
+                                <Icon className="w-4 h-4 flex-none opacity-70" />
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-medium truncate">{service.name}</div>
+                                    <div className="text-[10px] uppercase tracking-wider opacity-50 mt-0.5">
+                                        {service.kind} · {STATUS_LABEL[status]}
+                                    </div>
+                                </div>
                             </button>
                         </li>
                     )

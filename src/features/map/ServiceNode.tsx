@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { Service, ServiceKind } from "./types"
 import ApiIcon from "@/shared/ui/icons/ApiIcon"
@@ -14,18 +15,20 @@ interface Props { service: Service }
 const shapeByKind = (kind: ServiceKind, fill: string) => {
     switch(kind){
         case "api":
-            return <g><circle cx={0} cy={0} r={16} fill={fill} /><ApiIcon x={-12} y={-12} width={24} height={24} style={{color: "white"}}/></g>
+            return <g><circle cx={0} cy={0} r={18} fill={fill} /><ApiIcon x={-12} y={-12} width={24} height={24} style={{color: "white"}}/></g>
         case "cache":
-            return <g><polygon points="0,-16 16,0 0,16 -16,0" fill={fill} /><CacheIcon x={-12} y={-12} width={24} height={24} style={{color: "white"}} /></g>
+            return <g><polygon points="0,-18 18,0 0,18 -18,0" fill={fill} /><CacheIcon x={-12} y={-12} width={24} height={24} style={{color: "white"}} /></g>
         case "database":
-            return <g><rect x={-16} y={-16} width={32} height={32} rx={8} fill={fill} /><DatabaseIcon x={-12} y={-12} width={24} height={24} style={{color: "white"}} /></g>
+            return <g><rect x={-18} y={-18} width={36} height={36} rx={9} fill={fill} /><DatabaseIcon x={-12} y={-12} width={24} height={24} style={{color: "white"}} /></g>
     }
 }
 
 const ServiceNode = (props: Props) => {
 
     const theme = useThemeStore(state => state.theme)
-    const textColor = theme === "dark" ? "#fff" : "#000"
+    const isDark = theme === "dark"
+    const textColor = isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.85)"
+    const labelHaloFill = isDark ? "rgba(0,0,0,0.65)" : "rgba(255,255,255,0.85)"
 
     const incoming = useMapStore(useShallow(state =>
         state.connectionIds
@@ -38,18 +41,42 @@ const ServiceNode = (props: Props) => {
     const status = deriveServiceStatus(incoming, now)
     const fill = STATUS_COLORS[status]
     const isSelected = selectedServiceId === props.service.id
+    const [isHovered, setIsHovered] = useState(false)
 
     return (
         <g
             transform={`translate(${props.service.position.x}, ${props.service.position.y})`}
             onClick={(e) => { e.stopPropagation(); selectService(props.service.id) }}
+            onPointerEnter={() => setIsHovered(true)}
+            onPointerLeave={() => setIsHovered(false)}
             style={{ cursor: "pointer" }}
         >
-            {isSelected && (
-                <circle cx={0} cy={0} r={24} fill="none" stroke={textColor} strokeWidth={2} strokeDasharray="3 2" />
+            {(isSelected || isHovered) && (
+                <circle
+                    cx={0}
+                    cy={0}
+                    r={26}
+                    fill="none"
+                    stroke={fill}
+                    strokeWidth={isSelected ? 2.5 : 1.5}
+                    strokeOpacity={isSelected ? 0.9 : 0.5}
+                />
             )}
             {shapeByKind(props.service.kind, fill)}
-            <text x={0} y={32} textAnchor="middle" fill={textColor}>{props.service.name}</text>
+            <text
+                x={0}
+                y={42}
+                textAnchor="middle"
+                fontSize={12}
+                fontWeight={500}
+                fill={textColor}
+                paintOrder="stroke"
+                stroke={labelHaloFill}
+                strokeWidth={3}
+                strokeLinejoin="round"
+            >
+                {props.service.name}
+            </text>
         </g>
     )
 }

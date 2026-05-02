@@ -16,9 +16,11 @@ const MapView = () => {
     const { pan, zoom, isDragging, panZoomHandlers, reset } = usePanZoom<SVGSVGElement>()
     const isDark = theme === "dark"
     const arrowFill = isDark ? "#fff" : "#000"
+    const gridDotFill = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.10)"
+    const canvasBg = isDark ? "bg-[#050505]" : "bg-[#f7f7f8]"
     const overlayButton = isDark
-        ? "bg-white/[0.10] hover:bg-white/[0.15] border-white/20 text-white"
-        : "bg-black/[0.04] hover:bg-black/[0.08] border-black/10 text-black"
+        ? "bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white backdrop-blur-sm"
+        : "bg-white/80 hover:bg-white border-black/10 text-black backdrop-blur-sm shadow-sm"
     const isReset = pan.x === 0 && pan.y === 0 && zoom === 1
 
     return (
@@ -28,10 +30,19 @@ const MapView = () => {
                 onClick={() => selectService(null)}
                 width="100%"
                 height="100%"
-                className={isDark ? "bg-[#000]" : "bg-[#fff]"}
+                className={canvasBg}
                 style={{ cursor: isDragging ? "grabbing" : "grab" }}
             >
                 <defs>
+                    <pattern
+                        id="canvas-grid"
+                        width={32}
+                        height={32}
+                        patternUnits="userSpaceOnUse"
+                        patternTransform={`translate(${pan.x % (32 * zoom)} ${pan.y % (32 * zoom)}) scale(${zoom})`}
+                    >
+                        <circle cx={1} cy={1} r={1} fill={gridDotFill} />
+                    </pattern>
                     <marker
                         id="edge-arrow"
                         viewBox="0 0 10 10"
@@ -44,7 +55,15 @@ const MapView = () => {
                     >
                         <path d="M0,0 L10,5 L0,10 Z" fill={arrowFill} />
                     </marker>
+                    <filter id="dot-glow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                        <feMerge>
+                            <feMergeNode in="coloredBlur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
                 </defs>
+                <rect width="100%" height="100%" fill="url(#canvas-grid)" pointerEvents="none" />
                 <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
                     {connectionIds.map(id => {
                         const c = connectionsById[id]

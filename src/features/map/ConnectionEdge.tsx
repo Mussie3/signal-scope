@@ -16,15 +16,15 @@ const ConnectionEdge = (props: Props) => {
     const theme = useThemeStore(state => state.theme)
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
     const isDark = theme === "dark"
-    const baseStroke = isDark ? "#fff" : "#000"
+    const baseStroke = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)"
+    const dotFill = isDark ? "#ffffff" : "#1f2937"
     const isHighlighted = selectedServiceId !== null && (
         props.connection.sourceId === selectedServiceId ||
         props.connection.targetId === selectedServiceId
     )
     const isDimmed = selectedServiceId !== null && !isHighlighted
-    const stroke = baseStroke
-    const opacity = isDimmed ? 0.2 : 1
-    const strokeWidth = isHighlighted ? 3 : 2
+    const opacity = isDimmed ? 0.18 : 1
+    const strokeWidth = isHighlighted ? 2.5 : 1.5
 
     const dx = props.target.position.x - props.source.position.x
     const dy = props.target.position.y - props.source.position.y
@@ -42,8 +42,9 @@ const ConnectionEdge = (props: Props) => {
     return (
         <g style={{ opacity }}>
             <line
-                stroke={stroke}
+                stroke={baseStroke}
                 strokeWidth={strokeWidth}
+                strokeLinecap="round"
                 x1={x1}
                 y1={y1}
                 x2={x2}
@@ -54,11 +55,21 @@ const ConnectionEdge = (props: Props) => {
                 const progress = (now - event.timestamp) / ANIMATION_DURATION_MS
                 const x = x1 + (x2 - x1) * progress
                 const y = y1 + (y2 - y1) * progress
+                const fadeOpacity = progress < 0.1
+                    ? progress / 0.1
+                    : progress > 0.9
+                        ? (1 - progress) / 0.1
+                        : 1
+                const dotColor = event.success ? dotFill : "#ef4444"
                 return (
                     <circle
                         key={event.timestamp}
-                        cx={x} cy={y} r={4}
-                        fill={stroke}
+                        cx={x}
+                        cy={y}
+                        r={4}
+                        fill={dotColor}
+                        opacity={fadeOpacity}
+                        filter="url(#dot-glow)"
                     />
                 )
             })}
