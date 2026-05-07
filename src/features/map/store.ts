@@ -5,16 +5,23 @@ import { runForceLayout } from "./layout"
 
 export type LayoutMode = "manual" | "auto"
 
+export type HoveredEntity =
+    | { kind: "service"; id: string }
+    | { kind: "connection"; id: string }
+    | null
+
 type MapState = {
     servicesById: Record<string, Service>
     connectionsById: Record<string, Connection>
     serviceIds: string[]
     connectionIds: string[]
     selectedServiceId: string | null
+    hoveredEntity: HoveredEntity
     layoutMode: LayoutMode
     pushEvent: (connectionId: string, event: RequestEvent) => void
     pruneEvents: (beforeTimestamp: number) => void
     selectService: (id: string | null) => void
+    setHoveredEntity: (entity: HoveredEntity) => void
     setLayoutMode: (mode: LayoutMode) => void
 }
 
@@ -28,6 +35,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     serviceIds: seedServices.map(s => s.id),
     connectionIds: seedConnections.map(c => c.id),
     selectedServiceId: null,
+    hoveredEntity: null,
     layoutMode: "manual",
     pushEvent: (connectionId, event) => {
         set((state) => ({
@@ -51,6 +59,7 @@ export const useMapStore = create<MapState>((set, get) => ({
         }))
     },
     selectService: (id) => set({ selectedServiceId: id }),
+    setHoveredEntity: (entity) => set({ hoveredEntity: entity }),
     setLayoutMode: (mode) => {
         const state = get()
         const positions = mode === "auto"

@@ -3,6 +3,7 @@ import usePanZoom from "@/shared/hooks/usePanZoom"
 import { useMapStore } from "../store"
 import ConnectionEdge from "./ConnectionEdge"
 import ServiceNode from "./ServiceNode"
+import Tooltip from "./Tooltip"
 
 const MapView = () => {
     const theme = useThemeStore(s => s.theme)
@@ -111,6 +112,7 @@ const MapView = () => {
             <div className={`absolute bottom-3 right-3 px-2 py-1 rounded-md border text-[10px] tabular-nums ${overlayButton}`}>
                 {Math.round(zoom * 100)}%
             </div>
+            <Tooltip pan={pan} zoom={zoom} />
         </div>
     )
 }

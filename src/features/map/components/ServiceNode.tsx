@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { useMapStore } from "../store"
 import { useServiceStatus } from "../hooks/useServiceStatus"
 import { useIsServiceInRegion } from "../hooks/useRegionFilter"
@@ -17,9 +16,12 @@ const ServiceNode = ({ service }: Props) => {
     const { color } = useServiceStatus(service.id)
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
     const selectService = useMapStore(s => s.selectService)
+    const setHoveredEntity = useMapStore(s => s.setHoveredEntity)
+    const isHovered = useMapStore(s =>
+        s.hoveredEntity?.kind === "service" && s.hoveredEntity.id === service.id,
+    )
     const isInRegion = useIsServiceInRegion(service)
     const isSelected = selectedServiceId === service.id
-    const [isHovered, setIsHovered] = useState(false)
 
     const opacity = isInRegion ? 1 : 0.25
 
@@ -27,8 +29,8 @@ const ServiceNode = ({ service }: Props) => {
         <g
             transform={`translate(${service.position.x}, ${service.position.y})`}
             onClick={(e) => { e.stopPropagation(); selectService(service.id) }}
-            onPointerEnter={() => setIsHovered(true)}
-            onPointerLeave={() => setIsHovered(false)}
+            onPointerEnter={() => setHoveredEntity({ kind: "service", id: service.id })}
+            onPointerLeave={() => setHoveredEntity(null)}
             style={{ cursor: "pointer", opacity }}
         >
             {(isSelected || isHovered) && (

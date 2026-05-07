@@ -11,24 +11,30 @@ interface Props {
     target: Service
 }
 
+const HIT_AREA_WIDTH = 14
+
 const ConnectionEdge = ({ connection, source, target }: Props) => {
     const now = useNow()
     const theme = useThemeStore(s => s.theme)
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
+    const setHoveredEntity = useMapStore(s => s.setHoveredEntity)
+    const isHovered = useMapStore(s =>
+        s.hoveredEntity?.kind === "connection" && s.hoveredEntity.id === connection.id,
+    )
     const isInRegion = useIsConnectionInRegion(source, target)
     const isDark = theme === "dark"
     const baseStroke = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)"
     const dotFill = isDark ? "#ffffff" : "#1f2937"
 
-    const isHighlighted = selectedServiceId !== null && (
+    const isHighlightedBySelection = selectedServiceId !== null && (
         connection.sourceId === selectedServiceId ||
         connection.targetId === selectedServiceId
     )
-    const isDimmedBySelection = selectedServiceId !== null && !isHighlighted
+    const isDimmedBySelection = selectedServiceId !== null && !isHighlightedBySelection
     const isDimmedByRegion = !isInRegion
 
     const opacity = isDimmedByRegion ? 0.12 : isDimmedBySelection ? 0.18 : 1
-    const strokeWidth = isHighlighted ? 2.5 : 1.5
+    const strokeWidth = isHighlightedBySelection || isHovered ? 2.5 : 1.5
 
     const dx = target.position.x - source.position.x
     const dy = target.position.y - source.position.y
@@ -46,6 +52,18 @@ const ConnectionEdge = ({ connection, source, target }: Props) => {
     return (
         <g style={{ opacity }}>
             <line
+                stroke="transparent"
+                strokeWidth={HIT_AREA_WIDTH}
+                strokeLinecap="round"
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                style={{ cursor: "pointer" }}
+                onPointerEnter={() => setHoveredEntity({ kind: "connection", id: connection.id })}
+                onPointerLeave={() => setHoveredEntity(null)}
+            />
+            <line
                 stroke={baseStroke}
                 strokeWidth={strokeWidth}
                 strokeLinecap="round"
@@ -54,6 +72,7 @@ const ConnectionEdge = ({ connection, source, target }: Props) => {
                 x2={x2}
                 y2={y2}
                 markerEnd="url(#edge-arrow)"
+                pointerEvents="none"
             />
             {inFlight.map(event => {
                 const progress = (now - event.timestamp) / ANIMATION_DURATION_MS
@@ -74,6 +93,7 @@ const ConnectionEdge = ({ connection, source, target }: Props) => {
                         fill={dotColor}
                         opacity={fadeOpacity}
                         filter="url(#dot-glow)"
+                        pointerEvents="none"
                     />
                 )
             })}
