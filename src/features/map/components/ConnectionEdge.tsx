@@ -1,7 +1,7 @@
 import { useThemeStore } from "@/shared/store/theme.store"
-import { useNow } from "@/shared/hooks/useNow"
 import { useMapStore } from "../store"
 import { useIsConnectionInRegion } from "../hooks/useRegionFilter"
+import { usePlaybackTime } from "../hooks/usePlaybackTime"
 import { ANIMATION_DURATION_MS, NODE_EDGE_OFFSET } from "../constants"
 import type { Connection, Service } from "../types"
 
@@ -14,7 +14,7 @@ interface Props {
 const HIT_AREA_WIDTH = 14
 
 const ConnectionEdge = ({ connection, source, target }: Props) => {
-    const now = useNow()
+    const now = usePlaybackTime()
     const theme = useThemeStore(s => s.theme)
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
     const setHoveredEntity = useMapStore(s => s.setHoveredEntity)

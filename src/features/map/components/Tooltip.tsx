@@ -1,9 +1,9 @@
 import { useFilterStore } from "@/shared/store/filter.store"
 import { useThemeStore } from "@/shared/store/theme.store"
-import { useNow } from "@/shared/hooks/useNow"
 import { RANGE_TO_MS } from "@/shared/types/filter"
 import { useMapStore } from "../store"
 import { useServiceStatus } from "../hooks/useServiceStatus"
+import { usePlaybackTime } from "../hooks/usePlaybackTime"
 import { KIND_LABEL } from "../kinds"
 
 type Props = {
@@ -93,7 +93,7 @@ const ConnectionTooltip = ({ connectionId, pan, zoom, containerStyles }: Connect
     const source = useMapStore(s => connection ? s.servicesById[connection.sourceId] : null)
     const target = useMapStore(s => connection ? s.servicesById[connection.targetId] : null)
     const range = useFilterStore(s => s.range)
-    const now = useNow()
+    const now = usePlaybackTime()
 
     if (!connection || !source || !target) return null
 
