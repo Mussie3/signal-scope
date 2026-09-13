@@ -1,0 +1,35 @@
+# SignalScope :: Supabase project configuration
+project_id = "signal-scope"
+
+[api]
+enabled = true
+port = 54331
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 5000
+
+[db]
+port = 54332
+major_version = 17
+
+[studio]
+enabled = true
+port = 54333
+
+[realtime]
+# The map is fed by Broadcast messages emitted from the rollup trigger, not by
+# Postgres Changes -- see 20260907100300_events.sql for why.
+enabled = true
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+[functions.ingest]
+# Collectors authenticate with a project-scoped ingest key, not a Supabase JWT.
+verify_jwt = false

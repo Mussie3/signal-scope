@@ -33,8 +33,10 @@ const getActiveIncident = (loopT: number): Incident | null =>
 const randomBetween = (min: number, max: number) =>
     Math.floor(Math.random() * (max - min) + min)
 
-export const useSimulation = () => {
+export const useSimulation = (enabled = true) => {
     useEffect(() => {
+        if (!enabled) return
+
         const startMs = Date.now()
 
         const interval = setInterval(() => {
@@ -74,5 +76,5 @@ export const useSimulation = () => {
         }, TICK_INTERVAL_MS)
 
         return () => clearInterval(interval)
-    }, [])
+    }, [enabled])
 }
