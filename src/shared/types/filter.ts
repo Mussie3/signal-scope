@@ -1,5 +1,12 @@
-export type Region = "All Region" | "US East" | "US West" | "EU Central" | "Asia Pacific"
-export type ServiceRegion = Exclude<Region, "All Region">
+// Regions are DISCOVERED, never predefined.
+//
+// The demo's six services carry friendly labels ("US East"), but a topology
+// derived from OpenTelemetry reports whatever the resource said — `eu-central-1`,
+// `us-west-2`, or `unknown` when nothing reported one. The closed union that
+// used to live here was a lie the compiler could not catch: a real region never
+// matched a filter option, so selecting any region silently hid every service
+// that had one.
+export const ALL_REGIONS = "All Region"
 
 export type Range = "Last 30 seconds" | "Last 1 minute" | "Last 5 minutes" | "Last 15 minutes"
 

@@ -1,19 +1,12 @@
 import { useFilterStore } from "@/shared/store/filter.store"
 import { useThemeStore } from "@/shared/store/theme.store"
 import { DropDownItem } from "@/shared/types/component"
-import { Range, Region } from "@/shared/types/filter"
+import { Range } from "@/shared/types/filter"
+import { useAvailableRegions } from "@/features/map/hooks/useRegionFilter"
 import DropDown from "@/shared/ui/DropDown"
 import Search from "@/shared/ui/Search"
 import ToggleButton from "@/shared/ui/ToggleButton"
 import SignalScopeIcon from "@/shared/ui/icons/SignalScopeIcon"
-
-const REGIONS: Region[] = [
-    "All Region",
-    "US East",
-    "US West",
-    "EU Central",
-    "Asia Pacific",
-]
 
 const RANGES: Range[] = [
     "Last 30 seconds",
@@ -25,9 +18,12 @@ const RANGES: Range[] = [
 const TopBar = () => {
     const theme = useThemeStore((state) => state.theme)
     const { region, setRegion, range, setRange } = useFilterStore()
+    // Options come from the topology, not a hardcoded list: derived regions are
+    // whatever the traces reported, so a fixed list matches nothing.
+    const regions = useAvailableRegions()
     const isDark = theme === "dark"
 
-    const dropdownRegionItems: DropDownItem[] = REGIONS.map(r => ({
+    const dropdownRegionItems: DropDownItem[] = regions.map(r => ({
         label: r,
         onSelect: () => setRegion(r),
     }))
