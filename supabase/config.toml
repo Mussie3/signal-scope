@@ -33,3 +33,9 @@ enable_confirmations = false
 [functions.ingest]
 # Collectors authenticate with a project-scoped ingest key, not a Supabase JWT.
 verify_jwt = false
+
+[functions.otlp]
+# OTel exporters send their own ingest key as an Authorization header and have
+# no Supabase JWT to offer, so platform JWT verification has to be off here.
+# The function authenticates the key itself against ingest_keys.
+verify_jwt = false
