@@ -109,10 +109,21 @@ const inferPeer = (span: Any): { name: string; kind: ServiceKind } | null => {
     const kind: ServiceKind = ['redis', 'memcached'].includes(dbSystem) ? 'cache' : 'database'
     return { name: dbName ? `${dbSystem}:${dbName}` : dbSystem, kind }
   }
+  // A browser cannot tell your API from a third party: from inside the page both
+  // are just another origin. The browser collector therefore states which it is,
+  // and that hint is trusted over the default when present. Without it every
+  // frontend dependency would be classified 'external', and "my API is slow" and
+  // "Stripe is slow" would be the same incident.
+  const hinted = attr(span.attributes, 'signalscope.peer.kind')
+  const hintedKind: ServiceKind | null =
+    hinted === 'api' || hinted === 'database' || hinted === 'cache' || hinted === 'external'
+      ? hinted
+      : null
+
   const peer = attr(span.attributes, 'peer.service')
-  if (peer) return { name: peer, kind: 'external' }
+  if (peer) return { name: peer, kind: hintedKind ?? 'external' }
   const host = attr(span.attributes, 'server.address') ?? attr(span.attributes, 'net.peer.name')
-  if (host) return { name: host, kind: 'external' }
+  if (host) return { name: host, kind: hintedKind ?? 'external' }
   return null
 }
 
