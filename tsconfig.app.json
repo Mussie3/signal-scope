@@ -17,5 +17,7 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Deno test files sit beside their modules but are not app sources.
+  "exclude": ["src/**/*.test.ts"]
 }

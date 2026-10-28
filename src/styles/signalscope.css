@@ -1,0 +1,53 @@
+/* SignalScope :: control-room palette
+ *
+ * Health deliberately avoids red/green. Healthy is a calm BLUE rather than
+ * green, because red/green is the pairing the commonest form of colour
+ * blindness cannot separate — and health is the primary information in this
+ * product, not a decoration. Every state additionally carries a glyph and a
+ * distinct node silhouette, so colour is the third signal rather than the only
+ * one.
+ *
+ * Healthy is also quiet on purpose: in a room where this is left on a wall, the
+ * normal state should not demand attention. Only the exceptions should.
+ */
+:root {
+  --ss-background: oklch(0.165 0.012 250);
+  --ss-foreground: oklch(0.94 0.008 250);
+  --ss-card: oklch(0.205 0.014 250);
+  --ss-muted: oklch(0.24 0.012 250);
+  --ss-muted-foreground: oklch(0.66 0.015 250);
+  --ss-border: oklch(0.3 0.014 250);
+
+  --health-healthy: oklch(0.7 0.09 225);
+  --health-slow: oklch(0.8 0.15 72);
+  --health-failing: oklch(0.63 0.22 22);
+  --health-down: oklch(0.48 0.02 250);
+  --health-nodata: oklch(0.52 0.01 250);
+
+  /* Ink used on top of a filled node; dark enough to read on amber and red. */
+  --glyph-ink: oklch(0.16 0.02 250);
+  --node-fill: oklch(0.27 0.03 230);
+  --lane: oklch(0.19 0.013 250);
+  --lane-border: oklch(0.29 0.014 250);
+  --edge: oklch(0.42 0.025 240);
+  --dot: oklch(0.88 0.05 220);
+  --live: oklch(0.82 0.08 220);
+}
+
+/* A failing or down node pulses. Motion is the one channel that survives being
+ * glanced at from across a room, where neither colour nor a small glyph does. */
+.ss-pulse {
+  transform-origin: center;
+  animation: ss-pulse 1.6s ease-out infinite;
+}
+@keyframes ss-pulse {
+  from { transform: scale(1); opacity: 0.9; }
+  to { transform: scale(1.7); opacity: 0; }
+}
+
+.ss-live-dot { animation: ss-blink 1.4s ease-in-out infinite; }
+@keyframes ss-blink { 50% { opacity: 0.35; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-pulse, .ss-live-dot { animation: none; }
+}
