@@ -39,8 +39,17 @@ const AccountMenu = () => {
     const submit = async (mode: "in" | "up") => {
         setBusy(true)
         setNote(null)
-        const fn = mode === "in" ? supabase.auth.signInWithPassword : supabase.auth.signUp
-        const { error } = await fn({ email: addr, password: pw })
+        try {
+        // Called through supabase.auth, NOT detached into a variable first.
+        //
+        // `const fn = supabase.auth.signUp` loses `this`, and supabase-js
+        // reaches for this.storage immediately -- so it threw before sending a
+        // request and the button silently did nothing. Worse, the throw
+        // escaped the destructure below, so even the error state never showed.
+        const { error } = mode === "in"
+            ? await supabase.auth.signInWithPassword({ email: addr, password: pw })
+            : await supabase.auth.signUp({ email: addr, password: pw })
+
         setBusy(false)
         if (error) {
             setNote(error.message)
@@ -50,6 +59,13 @@ const AccountMenu = () => {
         // project's settings, so say what happened rather than assuming.
         setNote(mode === "up" ? "Check your email if confirmation is required." : null)
         if (mode === "in") setOpen(false)
+        } catch (err) {
+            // Anything unexpected still has to reach the person pressing the
+            // button. A form that goes quiet is indistinguishable from one
+            // that is ignoring you.
+            setBusy(false)
+            setNote(err instanceof Error ? err.message : "Something went wrong")
+        }
     }
 
     return (
