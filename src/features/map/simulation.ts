@@ -57,7 +57,7 @@ export const useSimulation = (enabled = true) => {
         let cursor = 0
 
         const interval = setInterval(() => {
-            const { connectionsById, connectionIds, pushEvent, pruneEvents } = useMapStore.getState()
+            const { connectionsById, connectionIds, pushEvents, pruneEvents } = useMapStore.getState()
             const now = Date.now()
             const loopT = (now - startMs) % LOOP_MS
             const incident = getActiveIncident(loopT)
@@ -104,6 +104,7 @@ export const useSimulation = (enabled = true) => {
                 cursor += 1
             }
 
+            const batch: Array<{ connectionId: string; event: { timestamp: number; success: boolean; latency: number } }> = []
             for (const connectionId of slice) {
                 const connection = connectionsById[connectionId]
                 if (!connection) continue
@@ -117,12 +118,12 @@ export const useSimulation = (enabled = true) => {
                     ? randomBetween(HIGH_LATENCY_MIN_MS, HIGH_LATENCY_MAX_MS)
                     : randomBetween(LATENCY_MIN_MS, LATENCY_MAX_MS)
 
-                pushEvent(connectionId, {
-                    timestamp: now,
-                    success: Math.random() > errorRate,
-                    latency,
+                batch.push({
+                    connectionId,
+                    event: { timestamp: now, success: Math.random() > errorRate, latency },
                 })
             }
+            pushEvents(batch)
 
             pruneEvents(now - PRUNE_WINDOW_MS)
         }, TICK_INTERVAL_MS)

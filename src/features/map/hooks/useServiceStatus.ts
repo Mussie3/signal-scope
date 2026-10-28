@@ -4,7 +4,7 @@ import { RANGE_TO_MS } from "@/shared/types/filter"
 import { useMapStore } from "../store"
 import { STATUS_COLORS } from "../constants"
 import { deriveServiceStatus, STATUS_LABEL } from "../status"
-import { usePlaybackTime } from "./usePlaybackTime"
+import { useStatusTime } from "./useStatusTime"
 import type { Connection, ServiceStatus } from "../types"
 
 type ServiceStatusInfo = {
@@ -18,12 +18,10 @@ type ServiceStatusInfo = {
 
 export const useServiceStatus = (serviceId: string): ServiceStatusInfo => {
     const incoming = useMapStore(useShallow(state =>
-        state.connectionIds
-            .map(id => state.connectionsById[id])
-            .filter(c => c.targetId === serviceId),
+        (state.incomingIdsByTarget[serviceId] ?? []).map(id => state.connectionsById[id]),
     ))
     const range = useFilterStore(s => s.range)
-    const now = usePlaybackTime()
+    const now = useStatusTime()
     const rangeMs = RANGE_TO_MS[range]
     const status = deriveServiceStatus(incoming, now, rangeMs)
 

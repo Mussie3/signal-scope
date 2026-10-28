@@ -21,7 +21,12 @@ type MapState = {
     /** Lane chrome for the map. Empty in manual mode, which has no lanes. */
     lanes: Lane[]
     canvas: { width: number; height: number }
+    /** Which connections point AT a service, by target id. See the note where
+     *  it is built: without it, every service rescans every connection. */
+    incomingIdsByTarget: Record<string, string[]>
     pushEvent: (connectionId: string, event: RequestEvent) => void
+    /** One store write for a whole tick's worth of traffic. */
+    pushEvents: (batch: Array<{ connectionId: string; event: RequestEvent }>) => void
     pruneEvents: (beforeTimestamp: number) => void
     selectService: (id: string | null) => void
     setHoveredEntity: (entity: HoveredEntity) => void
@@ -42,6 +47,24 @@ let manualPositionsById: Record<string, Position> = Object.fromEntries(
 // (0,0) for every single node.
 const initialLayout = computeLayout(seedServices, seedConnections)
 
+/**
+ * Index connections by what they point at.
+ *
+ * Deriving a service's health means looking at its inbound traffic, and the
+ * only way to find that without an index is to scan every connection. Done
+ * per service that is O(services x connections) — about five thousand
+ * iterations for this demo — and it ran on every single store notification.
+ */
+const indexByTarget = (connections: Connection[]): Record<string, string[]> => {
+    const index: Record<string, string[]> = {}
+    for (const c of connections) {
+        const list = index[c.targetId]
+        if (list) list.push(c.id)
+        else index[c.targetId] = [c.id]
+    }
+    return index
+}
+
 export const useMapStore = create<MapState>((set, get) => ({
     servicesById: Object.fromEntries(
         seedServices.map(s => [s.id, { ...s, position: initialLayout.positions[s.id] ?? s.position }]),
@@ -49,6 +72,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     connectionsById: Object.fromEntries(seedConnections.map(c => [c.id, c])),
     serviceIds: seedServices.map(s => s.id),
     connectionIds: seedConnections.map(c => c.id),
+    incomingIdsByTarget: indexByTarget(seedConnections),
     selectedServiceId: null,
     hoveredEntity: null,
     // Layered is the default now: a derived topology has no hand-placed
@@ -57,26 +81,49 @@ export const useMapStore = create<MapState>((set, get) => ({
     layoutMode: "auto",
     lanes: initialLayout.lanes,
     canvas: { width: initialLayout.width, height: initialLayout.height },
-    pushEvent: (connectionId, event) => {
-        set((state) => ({
-            connectionsById: {
-                ...state.connectionsById,
-                [connectionId]: {
-                    ...state.connectionsById[connectionId],
-                    buffer: [...state.connectionsById[connectionId].buffer, event]
-                }
+    pushEvent: (connectionId, event) => get().pushEvents([{ connectionId, event }]),
+    /**
+     * A tick of traffic is ONE store write.
+     *
+     * Pushing events one at a time spread the whole connection map per event
+     * and notified every subscriber per event. At roughly eighteen events a
+     * tick that was ~72 notifications a second, each one re-running the
+     * selector of all 56 nodes and 89 edges. Batching makes it four.
+     */
+    pushEvents: (batch) => {
+        if (batch.length === 0) return
+        set((state) => {
+            const next = { ...state.connectionsById }
+            for (const { connectionId, event } of batch) {
+                const conn = next[connectionId]
+                if (!conn) continue
+                next[connectionId] = { ...conn, buffer: [...conn.buffer, event] }
             }
-        }))
+            return { connectionsById: next }
+        })
     },
+    /**
+     * Prune, but say nothing when there is nothing to prune.
+     *
+     * This runs on every tick. Rebuilding the whole connection map
+     * unconditionally meant a store notification four times a second that
+     * changed not one byte, and every subscriber re-ran its selector for it.
+     */
     pruneEvents: (beforeTimestamp) => {
-        set((state) => ({
-             connectionsById: Object.fromEntries(
-                Object.entries(state.connectionsById).map(([id, conn]) => [
-                    id,
-                    { ...conn, buffer: conn.buffer.filter(e => e.timestamp >= beforeTimestamp) }
-                ])
-             )
-        }))
+        set((state) => {
+            let changed = false
+            const next: Record<string, Connection> = {}
+            for (const [id, conn] of Object.entries(state.connectionsById)) {
+                const kept = conn.buffer.filter(e => e.timestamp >= beforeTimestamp)
+                if (kept.length === conn.buffer.length) {
+                    next[id] = conn
+                    continue
+                }
+                changed = true
+                next[id] = { ...conn, buffer: kept }
+            }
+            return changed ? { connectionsById: next } : {}
+        })
     },
     setTopology: (services, connections) => {
         manualPositionsById = Object.fromEntries(services.map(s => [s.id, s.position]))
@@ -89,6 +136,7 @@ export const useMapStore = create<MapState>((set, get) => ({
             connectionsById: Object.fromEntries(connections.map(c => [c.id, c])),
             serviceIds: services.map(s => s.id),
             connectionIds: connections.map(c => c.id),
+            incomingIdsByTarget: indexByTarget(connections),
             lanes: result ? result.lanes : [],
             canvas: result ? { width: result.width, height: result.height } : { width: 0, height: 0 },
             // A topology swap can orphan the current selection, and a right
