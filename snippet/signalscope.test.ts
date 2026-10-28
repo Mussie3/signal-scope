@@ -194,3 +194,22 @@ Deno.test('all spans in a page view share one trace id', async () => {
   eq(new Set(spans.map((s: { traceId: string }) => s.traceId)).size, 1, 'one trace per page view')
   eq(new Set(spans.map((s: { spanId: string }) => s.spanId)).size, 2, 'distinct span ids')
 })
+
+Deno.test("the host serving the collector is not a dependency", () => {
+  // The collector is usually loaded from somewhere - a CDN, the SignalScope
+  // deploy itself - and fetching it is not a service call. Reported as one, it
+  // becomes a node on every map that uses the collector, which is the single
+  // node guaranteed to be wrong.
+  const { c, sent } = capturing({ ignoreOrigins: ['https://cdn.signalscope.example'] })
+  c.record({ url: 'https://cdn.signalscope.example/collector.js', method: 'GET', startMs: 0, endMs: 5 })
+  c.record({ url: `${FIRST_PARTY}/orders`, method: 'GET', startMs: 0, endMs: 5 })
+  c.flush()
+
+  // deno-lint-ignore no-explicit-any
+  const spans = (sent[0] as any).resourceSpans[0].scopeSpans[0].spans
+  eq(spans.length, 1, 'only the real call is reported')
+  ok(
+    !JSON.stringify(sent).includes('cdn.signalscope.example'),
+    'the collector host must not appear anywhere in the batch',
+  )
+})

@@ -36,6 +36,13 @@ export type CollectorConfig = {
   batchSize?: number
   /** Optional region, surfaced as cloud.region. */
   region?: string
+  /** Origins to never report, beyond the receiver itself.
+   *
+   *  The collector is usually served FROM somewhere, and fetching it is not a
+   *  service call. Without this the host serving the script becomes a
+   *  dependency node on every map that uses it -- the monitoring tool
+   *  appearing on its own map, which is the one node guaranteed to be wrong. */
+  ignoreOrigins?: string[]
   /** How often to ship whatever is buffered, in ms. 0 disables the timer.
    *  Page-hide flushing alone is not enough for an installed PWA, which can
    *  stay visible for hours. */
@@ -116,6 +123,7 @@ export const createCollector = (config: CollectorConfig) => {
     firstPartyOrigins = [],
     sampleRate = 1,
     batchSize = 20,
+    ignoreOrigins = [],
     region,
     transport,
     now = () => Date.now(),
@@ -136,9 +144,11 @@ export const createCollector = (config: CollectorConfig) => {
     if (!host) return
 
     const origin = originOf(call.url)
-    // Never report calls to the receiver itself, or the collector observes its
-    // own traffic and the map grows a node for the monitoring tool.
+    // Never report calls to the receiver itself, or to wherever the collector
+    // was served from. Either one makes the map grow a node for the monitoring
+    // tool rather than for the system being monitored.
     if (origin && endpoint.startsWith(origin)) return
+    if (origin && ignoreOrigins.includes(origin)) return
 
     const isFirstParty = !!origin && firstPartyOrigins.includes(origin)
     const ok = !call.failed && (call.status === undefined || call.status < 400)
