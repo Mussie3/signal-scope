@@ -43,6 +43,53 @@ Pause the timeline at any point and scrub back to replay the moment a service fi
 
 ---
 
+## Adding SignalScope to your own system
+
+SignalScope derives the map from OpenTelemetry traces, so there is no topology
+to declare. Point something at the receiver and the services, their
+dependencies and their health appear on their own.
+
+### A browser app, with no build step
+
+One tag. Works on Rails, Django, WordPress, or a hand-written page:
+
+```html
+<script src="https://signalscope-live.vercel.app/collector.js"
+        data-service="checkout-web"
+        data-endpoint="https://<project-ref>.supabase.co/functions/v1/otlp"
+        data-key="pk_..."
+        data-first-party="https://api.example.com"></script>
+```
+
+`data-first-party` is the one that matters most. From inside a browser every
+call looks external, so without it "my backend is down" and "Stripe is down"
+become the same incident. Optional: `data-region`, `data-sample-rate`.
+
+The bundle is 1.7KB gzipped. The official OpenTelemetry browser SDK is well
+over 100KB, which is hard to defend in a tag whose whole job is observing page
+performance.
+
+### A browser app with a bundler
+
+The same file exposes `window.SignalScope.install(config)`, so load the script
+and call it yourself when you need config that an HTML attribute cannot carry.
+
+### A backend, in any language
+
+Point any OpenTelemetry exporter at the same `/v1/traces` endpoint with an
+`sk_` key. One constraint worth knowing up front: the receiver speaks **OTLP
+over HTTP with JSON encoding** only. Several SDKs default to protobuf, and the
+endpoint returns a 415 saying exactly that.
+
+Anything that cannot emit OTLP/JSON directly can go through an OpenTelemetry
+Collector, which accepts Jaeger, Zipkin, gRPC and protobuf and exports what
+this expects.
+
+Databases and caches need no instrumentation at all: a client span carrying
+`db.system` is enough to synthesise the far side, which is the shape real
+traces already have, because nobody instruments Postgres.
+
+
 ## Stack
 
 - React 19 + TypeScript + Vite

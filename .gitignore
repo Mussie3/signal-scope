@@ -33,3 +33,6 @@ supabase/.temp
 supabase/.branches
 .vercel
 .env*
+
+# Built by build:collector, served from the deploy at /collector.js
+public/collector.js
