@@ -1,19 +1,13 @@
 import { useMapStore } from "../store"
 import { useServiceStatus } from "../hooks/useServiceStatus"
 import { useIsServiceInRegion } from "../hooks/useRegionFilter"
-import { useThemeStore } from "@/shared/store/theme.store"
 import type { Service } from "../types"
-import ServiceShape from "./ServiceShape"
+import Shape, { HealthGlyph, healthColor } from "./ServiceShape"
 
 interface Props { service: Service }
 
 const ServiceNode = ({ service }: Props) => {
-    const theme = useThemeStore(s => s.theme)
-    const isDark = theme === "dark"
-    const textColor = isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.85)"
-    const labelHaloFill = isDark ? "rgba(0,0,0,0.65)" : "rgba(255,255,255,0.85)"
-
-    const { color } = useServiceStatus(service.id)
+    const { status } = useServiceStatus(service.id)
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
     const selectService = useMapStore(s => s.selectService)
     const setHoveredEntity = useMapStore(s => s.setHoveredEntity)
@@ -23,7 +17,11 @@ const ServiceNode = ({ service }: Props) => {
     const isInRegion = useIsServiceInRegion(service)
     const isSelected = selectedServiceId === service.id
 
-    const opacity = isInRegion ? 1 : 0.25
+    // A node nobody is waiting on should not shout, and one that is filtered out
+    // should still be visible enough to keep the shape of the system legible.
+    const opacity = isInRegion ? 1 : 0.16
+    const urgent = status === "failing" || status === "down"
+    const quiet = status === "healthy" || status === "no_data"
 
     return (
         <g
@@ -33,29 +31,33 @@ const ServiceNode = ({ service }: Props) => {
             onPointerLeave={() => setHoveredEntity(null)}
             style={{ cursor: "pointer", opacity }}
         >
-            {(isSelected || isHovered) && (
-                <circle
-                    cx={0}
-                    cy={0}
-                    r={26}
-                    fill="none"
-                    stroke={color}
-                    strokeWidth={isSelected ? 2.5 : 1.5}
-                    strokeOpacity={isSelected ? 0.9 : 0.5}
-                />
+            {/* Generous invisible hit area: the shapes are small and a map is
+                dragged as much as it is clicked. */}
+            <circle r={34} fill="transparent" />
+
+            {/* Motion is the channel that survives being glanced at from across a
+                room, where neither hue nor a 6px glyph does. */}
+            {urgent && (
+                <circle className="ss-pulse" r={24} fill="none" stroke={healthColor(status)} strokeWidth={2} />
             )}
-            <ServiceShape kind={service.kind} fill={color} />
+
+            {isSelected && (
+                <circle r={33} fill="none" stroke="var(--ss-foreground)" strokeWidth={1.5} strokeDasharray="4 3" />
+            )}
+            {!isSelected && isHovered && (
+                <circle r={30} fill="none" stroke="var(--ss-muted-foreground)" strokeWidth={1.25} />
+            )}
+
+            <Shape kind={service.kind} status={status} />
+            <HealthGlyph status={status} />
+
             <text
-                x={0}
-                y={42}
+                y={40}
                 textAnchor="middle"
-                fontSize={12}
-                fontWeight={500}
-                fill={textColor}
-                paintOrder="stroke"
-                stroke={labelHaloFill}
-                strokeWidth={3}
-                strokeLinejoin="round"
+                fontSize={11.5}
+                fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+                fill={quiet ? "var(--ss-muted-foreground)" : "var(--ss-foreground)"}
+                pointerEvents="none"
             >
                 {service.name}
             </text>
