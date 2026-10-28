@@ -4,7 +4,7 @@ import { useFilterStore } from "@/shared/store/filter.store"
 import { RANGE_TO_MS } from "@/shared/types/filter"
 import { useMapStore } from "../store"
 import { deriveServiceStatus } from "../status"
-import { usePlaybackTime } from "./usePlaybackTime"
+import { useStatusTime } from "./useStatusTime"
 import type { ServiceStatus } from "../types"
 
 export interface BlastRadius {
@@ -42,13 +42,14 @@ export interface BlastRadius {
  */
 export const useBlastRadius = (): BlastRadius => {
     const range = useFilterStore(s => s.range)
-    const now = usePlaybackTime()
+    const now = useStatusTime()
     const rangeMs = RANGE_TO_MS[range]
 
     const serviceIds = useMapStore(useShallow(s => s.serviceIds))
     const connectionIds = useMapStore(useShallow(s => s.connectionIds))
     const servicesById = useMapStore(s => s.servicesById)
     const connectionsById = useMapStore(s => s.connectionsById)
+    const incomingIdsByTarget = useMapStore(s => s.incomingIdsByTarget)
 
     return useMemo(() => {
         const statusById: Record<string, ServiceStatus> = {}
@@ -65,9 +66,9 @@ export const useBlastRadius = (): BlastRadius => {
         }
 
         for (const id of serviceIds) {
-            const incoming = connectionIds
+            const incoming = (incomingIdsByTarget[id] ?? [])
                 .map(cid => connectionsById[cid])
-                .filter(c => c && c.targetId === id)
+                .filter(Boolean)
             const status = deriveServiceStatus(incoming, now, rangeMs)
             statusById[id] = status
             // "No data" is not a failure — it usually means nothing is calling
@@ -90,5 +91,5 @@ export const useBlastRadius = (): BlastRadius => {
         }
 
         return { unhealthy, affected, focus: new Set([...unhealthy, ...affected]), statusById }
-    }, [serviceIds, connectionIds, servicesById, connectionsById, now, rangeMs])
+    }, [serviceIds, connectionIds, servicesById, connectionsById, incomingIdsByTarget, now, rangeMs])
 }
