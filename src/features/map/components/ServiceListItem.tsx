@@ -36,12 +36,10 @@ const StatusDot = ({ service }: { service: Service }) => {
  * person already has open in a terminal.
  */
 const ServiceListItem = ({ service }: { service: Service }) => {
-    const { status } = useServiceStatus(service.id)
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
     const selectService = useMapStore(s => s.selectService)
     const setHoveredEntity = useMapStore(s => s.setHoveredEntity)
     const isSelected = selectedServiceId === service.id
-    const quiet = status === "healthy" || status === "no_data"
 
     return (
         <button
@@ -56,10 +54,7 @@ const ServiceListItem = ({ service }: { service: Service }) => {
             }}
         >
             <StatusDot service={service} />
-            <span
-                className="min-w-0 flex-1 truncate font-mono text-[13px]"
-                style={{ color: quiet ? "var(--ss-foreground)" : healthColor(status) }}
-            >
+            <span className="min-w-0 flex-1 truncate font-mono text-[13px]">
                 {service.name}
             </span>
             <span

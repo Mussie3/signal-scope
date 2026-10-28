@@ -14,14 +14,15 @@ const formatAgo = (ms: number): string => {
     return `${Math.round(ms / 3_600_000)}h ago`
 }
 
-/** Quiet stretches stay grey; only trouble gets colour, or the track is noise. */
-const segmentColor = (status: ServiceStatus): string =>
-    status === "healthy" ? "var(--ss-muted-foreground)"
-        : status === "no_data" ? "transparent"
-            : healthColor(status)
-
-const segmentOpacity = (status: ServiceStatus): number =>
-    status === "healthy" ? 0.4 : status === "no_data" ? 0 : 1
+/**
+ * Only trouble is drawn.
+ *
+ * Painting the healthy stretches too turns the track into a solid bar with
+ * faint variations, and the eye has to work out which grey is which. Leaving
+ * them as bare background makes every mark on the track mean "something
+ * happened here", which is the only question the track is asked.
+ */
+const isQuiet = (status: ServiceStatus): boolean => status === "healthy" || status === "no_data"
 
 const TimelineScrubber = () => {
     const liveNow = useNow()
@@ -89,22 +90,33 @@ const TimelineScrubber = () => {
                     at rather than something you hunt for by dragging. */}
                 <div className="group relative flex h-6 flex-1 items-center">
                     <div
-                        className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 overflow-hidden rounded-full"
+                        className="absolute inset-x-0 top-1/2 h-3 -translate-y-1/2 overflow-hidden rounded"
                         style={{ background: "var(--ss-muted)" }}
                     >
-                        {segments.map((status, i) => (
+                        {segments.map((status, i) => isQuiet(status) ? null : (
                             <span
                                 key={i}
                                 className="absolute inset-y-0"
                                 style={{
                                     left: `${(i / segments.length) * 100}%`,
-                                    width: `${segmentPct}%`,
-                                    background: segmentColor(status),
-                                    opacity: segmentOpacity(status),
+                                    // A sliver of overlap, or rounding leaves
+                                    // hairline gaps through a solid red band.
+                                    width: `${segmentPct + 0.05}%`,
+                                    background: healthColor(status),
                                 }}
                             />
                         ))}
                     </div>
+
+                    {/* Everything to the right of the head is future you are not
+                        looking at. Shading it is what stops a paused map being
+                        mistaken for a live one. */}
+                    {!isLive && (
+                        <div
+                            className="pointer-events-none absolute inset-y-1"
+                            style={{ left: `${headPct}%`, right: 0, background: "color-mix(in oklch, var(--health-slow) 15%, transparent)" }}
+                        />
+                    )}
                     <input
                         type="range"
                         min={sliderMin}
@@ -115,12 +127,13 @@ const TimelineScrubber = () => {
                         className="absolute inset-0 w-full cursor-pointer opacity-0"
                         aria-label="Timeline scrubber"
                     />
+                    {/* A hairline, not a knob: the head marks an instant, and a
+                        14px circle covers six seconds of the track it points at. */}
                     <div
-                        className="pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                        className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2"
                         style={{
                             left: `${headPct}%`,
-                            background: isLive ? "var(--live)" : "var(--ss-foreground)",
-                            boxShadow: "0 0 0 3px var(--ss-card)",
+                            background: isLive ? "var(--live)" : "var(--health-slow)",
                         }}
                     />
                 </div>

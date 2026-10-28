@@ -57,7 +57,7 @@ const TopBar = () => {
 
     return (
         <header
-            className="flex items-center gap-3 border-b px-4 py-2.5"
+            className="flex h-14 flex-none items-center gap-4 border-b px-4"
             style={{ borderColor: "var(--ss-border)", background: "var(--ss-card)" }}
         >
             <div className="flex items-center gap-2 pr-1">
@@ -107,7 +107,7 @@ const TopBar = () => {
                         style={{ borderColor: "var(--ss-border)", background: "var(--ss-card)", color: "var(--ss-foreground)" }}
                     >
                         {regions.map(r => (
-                            <option key={r} value={r}>{r === ALL_REGIONS ? "All regions" : regionLabel(r)}</option>
+                            <option key={r} value={r}>{r === ALL_REGIONS ? "All regions" : `${regionLabel(r)} \u00B7 ${r}`}</option>
                         ))}
                     </select>
                     <select

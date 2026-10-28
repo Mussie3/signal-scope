@@ -128,6 +128,37 @@ const assignTiers = (ids: string[], edges: Array<[string, string]>): Record<stri
     return tier
 }
 
+/**
+ * Storage sits below compute, whatever the call graph says.
+ *
+ * Depth alone puts a cache that happens to be called early on the same row as
+ * the APIs calling it, and a database two rows above another database, so the
+ * map reads as an arbitrary scatter of shapes rather than as tiers of a system.
+ * Pushing caches below every API, and databases below every cache, gives the
+ * horizontal bands people actually expect: edge, services, cache, storage.
+ *
+ * It only ever pushes a node DOWN, so the guarantee that a caller sits above
+ * its callee survives — a database is already at or below everything calling
+ * it, and moving it further down cannot break that.
+ */
+const KIND_FLOOR: Partial<Record<Service["kind"], number>> = { cache: 1, database: 2 }
+
+const bandByKind = (services: Service[], tiers: Record<string, number>): Record<string, number> => {
+    let deepestCompute = 0
+    for (const s of services) {
+        if (s.kind === "external" || KIND_FLOOR[s.kind] !== undefined) continue
+        deepestCompute = Math.max(deepestCompute, tiers[s.id] ?? 0)
+    }
+
+    const banded = { ...tiers }
+    for (const s of services) {
+        const floor = KIND_FLOOR[s.kind]
+        if (floor === undefined) continue
+        banded[s.id] = Math.max(tiers[s.id] ?? 0, deepestCompute + floor)
+    }
+    return banded
+}
+
 export const computeLayout = (services: Service[], connections: Connection[]): LayoutResult => {
     if (services.length === 0) {
         return { positions: {}, lanes: [], width: 0, height: 0, tiers: {} }
@@ -141,7 +172,7 @@ export const computeLayout = (services: Service[], connections: Connection[]): L
         .filter((c) => ownSet.has(c.sourceId) && ownSet.has(c.targetId))
         .map((c) => [c.sourceId, c.targetId] as [string, string])
 
-    const tiers = assignTiers(ownIds, ownEdges)
+    const tiers = bandByKind(services, assignTiers(ownIds, ownEdges))
 
     // Externals are stacked in their own lane in a stable order rather than
     // tiered, so the column does not reshuffle as traffic moves.

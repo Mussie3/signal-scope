@@ -24,13 +24,16 @@ const conn = (from: string, to: string): any =>
     ({ id: `${from}>${to}`, sourceId: from, targetId: to, buffer: [] })
 
 Deno.test("callers sit above callees", () => {
+    // Asserted as an ordering, not as fixed tier numbers: storage is banded
+    // below compute, so a database's exact tier depends on how deep the
+    // compute graph above it runs. What must never change is the direction.
     const { tiers } = computeLayout(
         [svc("web", "frontend"), svc("api", "api"), svc("db", "database")],
         [conn("web", "api"), conn("api", "db")],
     )
     eq(tiers["web"], 0, "web tier")
-    eq(tiers["api"], 1, "api tier")
-    eq(tiers["db"], 2, "db tier")
+    ok(tiers["api"] > tiers["web"], "api sits below web")
+    ok(tiers["db"] > tiers["api"], "db sits below api")
 })
 
 Deno.test("depth is the LONGEST path, not the shortest", () => {
@@ -40,7 +43,23 @@ Deno.test("depth is the LONGEST path, not the shortest", () => {
         [svc("web", "frontend"), svc("api", "api"), svc("db", "database")],
         [conn("web", "api"), conn("api", "db"), conn("web", "db")],
     )
-    eq(tiers["db"], 2, "db should take the deeper path")
+    ok(tiers["db"] > tiers["api"], "db should take the deeper path")
+})
+
+Deno.test("storage is banded below compute, whatever the call graph says", () => {
+    // notify is called by orders, so it sits deep in the compute graph. The
+    // cache and the database are called from the shallow end, so depth alone
+    // would leave them level with the APIs above them. Both must still land in
+    // their own bands underneath everything that computes.
+    const { tiers } = computeLayout(
+        [
+            svc("web", "frontend"), svc("orders", "api"), svc("notify", "api"),
+            svc("cache", "cache"), svc("db", "database"),
+        ],
+        [conn("web", "orders"), conn("orders", "notify"), conn("web", "cache"), conn("web", "db")],
+    )
+    ok(tiers["cache"] > tiers["notify"], "cache sits below the deepest api")
+    ok(tiers["db"] > tiers["cache"], "storage sits below cache")
 })
 
 Deno.test("a cycle does not hang, and every node still gets a tier", () => {
