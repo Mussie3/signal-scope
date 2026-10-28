@@ -1,6 +1,8 @@
 import { useMapStore } from "../store"
 import { useServiceStatus } from "../hooks/useServiceStatus"
 import { useIsServiceInRegion } from "../hooks/useRegionFilter"
+import { useModeStore } from "../mode.store"
+import { useBlastRadius } from "../hooks/useBlastRadius"
 import type { Service } from "../types"
 import Shape, { HealthGlyph, healthColor } from "./ServiceShape"
 
@@ -15,11 +17,24 @@ const ServiceNode = ({ service }: Props) => {
         s.hoveredEntity?.kind === "service" && s.hoveredEntity.id === service.id,
     )
     const isInRegion = useIsServiceInRegion(service)
+    const mode = useModeStore(m => m.mode)
+    const { focus } = useBlastRadius()
+    const ambient = mode === "ambient"
+    // Incident mode pushes everything that is fine into the background, so the
+    // few things that are not are the only thing left to look at.
+    const outOfFocus = mode === "incident" && focus.size > 0 && !focus.has(service.id)
     const isSelected = selectedServiceId === service.id
 
-    // A node nobody is waiting on should not shout, and one that is filtered out
-    // should still be visible enough to keep the shape of the system legible.
-    const opacity = isInRegion ? 1 : 0.16
+    /**
+     * Dimmed, not erased.
+     *
+     * At 0.18 the healthy majority effectively vanished, and with it the shape
+     * of the system the incident is happening INSIDE — you were left looking at
+     * four lit nodes floating in black, unable to tell which region they were
+     * in or what sat downstream. A third of full weight is enough to read the
+     * structure and still nowhere near enough to compete with the red.
+     */
+    const opacity = !isInRegion ? 0.22 : outOfFocus ? 0.34 : 1
     const urgent = status === "failing" || status === "down"
     const quiet = status === "healthy" || status === "no_data"
 
@@ -52,9 +67,9 @@ const ServiceNode = ({ service }: Props) => {
             <HealthGlyph status={status} />
 
             <text
-                y={40}
+                y={ambient ? 46 : 40}
                 textAnchor="middle"
-                fontSize={11.5}
+                fontSize={ambient ? 15 : 11.5}
                 fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
                 fill={quiet ? "var(--ss-muted-foreground)" : "var(--ss-foreground)"}
                 pointerEvents="none"

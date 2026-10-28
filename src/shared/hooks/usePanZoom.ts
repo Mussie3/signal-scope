@@ -69,6 +69,39 @@ const usePanZoom = <T extends Element = Element>() => {
         setZoom(1)
     }
 
+    /**
+     * Zoom from the centre of the viewport, for the +/- buttons.
+     *
+     * Wheel zoom anchors on the cursor because that is where the user is
+     * looking; a button has no cursor position to anchor to, and anchoring on
+     * the origin would slide the map out from under them.
+     */
+    const zoomBy = (factor: number) => {
+        setZoom(prevZoom => {
+            const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prevZoom * factor))
+            const scale = newZoom / prevZoom
+            setPanValue(prevPan => ({
+                x: prevPan.x * scale,
+                y: prevPan.y * scale,
+            }))
+            return newZoom
+        })
+    }
+
+    /** Centre a canvas of the given size at the given scale. */
+    const fitTo = (
+        scale: number,
+        viewportWidth: number,
+        viewportHeight: number,
+        canvas: { width: number; height: number },
+    ) => {
+        setZoom(scale)
+        setPanValue({
+            x: (viewportWidth - canvas.width * scale) / 2,
+            y: (viewportHeight - canvas.height * scale) / 2,
+        })
+    }
+
     const panZoomHandlers: PanZoomHandlers<T> = {
         onPointerDown: handlePointerDown,
         onPointerMove: handlePointerMove,
@@ -83,6 +116,8 @@ const usePanZoom = <T extends Element = Element>() => {
         isDragging,
         panZoomHandlers,
         reset,
+        zoomBy,
+        fitTo,
     }
 }
 

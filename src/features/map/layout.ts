@@ -1,4 +1,7 @@
 import type { Service, Connection, Position } from "./types"
+import { EXTERNAL_LANE, compareRegions, regionLabel } from "./regions"
+
+export { EXTERNAL_LANE }
 
 /**
  * Layered layout: lanes by region, tiers by dependency depth.
@@ -19,6 +22,9 @@ import type { Service, Connection, Position } from "./types"
 const LANE_GAP = 48
 const LANE_PADDING = 28
 const NODE_GAP = 112
+/** Advance width per character of a node label at ambient's 15px. */
+const AMBIENT_LABEL_CH = 8.6
+const LABEL_BREATHING_ROOM = 16
 const TIER_GAP = 128
 const TOP_PADDING = 76
 const MIN_LANE_W = 220
@@ -39,8 +45,6 @@ export interface LayoutResult {
     /** Tier index per service, so edges can tell "downward" from "sideways". */
     tiers: Record<string, number>
 }
-
-export const EXTERNAL_LANE = "__external__"
 
 /**
  * Third parties are laned separately rather than by region.
@@ -154,13 +158,17 @@ export const computeLayout = (services: Service[], connections: Connection[]): L
         laneOf.get(key)!.push(s)
     }
 
-    // Busiest region first; unknown and external always last, because they are
-    // the lanes you look at least.
+    /**
+     * Lane order, with unknown and external always last.
+     *
+     * Real regions sort by declaration order, NOT by how many services they
+     * hold. Headcount order looks sensible until one region gains a service and
+     * every lane on the map slides sideways — the person watching has to
+     * re-find everything, mid-incident, for no reason.
+     */
     const laneKeys = [...laneOf.keys()].sort((a, b) => {
         const rank = (k: string) => (k === EXTERNAL_LANE ? 2 : k === "unknown" ? 1 : 0)
-        if (rank(a) !== rank(b)) return rank(a) - rank(b)
-        const diff = laneOf.get(b)!.length - laneOf.get(a)!.length
-        return diff !== 0 ? diff : a.localeCompare(b)
+        return rank(a) - rank(b) || compareRegions(a, b)
     })
 
     const positions: Record<string, Position> = {}
@@ -178,8 +186,19 @@ export const computeLayout = (services: Service[], connections: Connection[]): L
             if (t > maxTier) maxTier = t
         }
 
+        /**
+         * Spacing follows the LABELS, not just the node count.
+         *
+         * A fixed 112px gap fits a circle and the word "auth" with room to
+         * spare, and runs "legacy-batch" straight into "report-worker" — which
+         * on a map of fifty identically-shaped nodes is the one channel left
+         * for telling them apart. Ambient mode sets the labels at 15px, so the
+         * widest name in the lane decides the gap for everything in it.
+         */
+        const longest = Math.max(...members.map(m => m.name.length))
+        const gap = Math.max(NODE_GAP, longest * AMBIENT_LABEL_CH + LABEL_BREATHING_ROOM)
         const widest = Math.max(...[...rows.values()].map((r) => r.length))
-        const laneWidth = Math.max(MIN_LANE_W, widest * NODE_GAP + LANE_PADDING * 2)
+        const laneWidth = Math.max(MIN_LANE_W, widest * gap + LANE_PADDING * 2)
 
         for (const [tier, row] of rows) {
             // Deterministic order within a row, so a node does not hop sideways
@@ -187,14 +206,14 @@ export const computeLayout = (services: Service[], connections: Connection[]): L
             row.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
             row.forEach((s, i) => {
                 const centre = cursorX + laneWidth / 2
-                const offset = (i - (row.length - 1) / 2) * NODE_GAP
+                const offset = (i - (row.length - 1) / 2) * gap
                 positions[s.id] = { x: centre + offset, y: TOP_PADDING + tier * TIER_GAP }
             })
         }
 
         lanes.push({
             key,
-            label: key === EXTERNAL_LANE ? "Outside your system" : key,
+            label: regionLabel(key),
             x: cursorX,
             width: laneWidth,
         })

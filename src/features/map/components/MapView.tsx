@@ -1,5 +1,7 @@
+import { useEffect, useRef } from "react"
 import usePanZoom from "@/shared/hooks/usePanZoom"
 import { useMapStore } from "../store"
+import { useModeStore } from "../mode.store"
 import ConnectionEdge from "./ConnectionEdge"
 import ServiceNode from "./ServiceNode"
 import MapLanes from "./MapLanes"
@@ -14,24 +16,39 @@ const MapView = () => {
     const serviceIds = useMapStore(s => s.serviceIds)
     const connectionIds = useMapStore(s => s.connectionIds)
     const selectService = useMapStore(s => s.selectService)
-    const layoutMode = useMapStore(s => s.layoutMode)
-    const setLayoutMode = useMapStore(s => s.setLayoutMode)
     const canvas = useMapStore(s => s.canvas)
+    const mode = useModeStore(m => m.mode)
+    const wrapRef = useRef<HTMLDivElement>(null)
+    const fittedFor = useRef<string>("")
+    const ambient = mode === "ambient"
 
-    const { pan, zoom, isDragging, panZoomHandlers, reset } = usePanZoom<SVGSVGElement>()
+    const { pan, zoom, isDragging, panZoomHandlers, reset, zoomBy, fitTo } = usePanZoom<SVGSVGElement>()
 
-    const isReset = pan.x === 0 && pan.y === 0 && zoom === 1
-    const isAuto = layoutMode === "auto"
+    // Fit once per topology. A discovered map can be any size, and opening it
+    // at 100% with half the estate off-screen is a worse first impression than
+    // any amount of visual polish can recover.
+    useEffect(() => {
+        const el = wrapRef.current
+        if (!el || canvas.width === 0) return
+        const key = `${canvas.width}x${canvas.height}`
+        if (fittedFor.current === key) return
+        fittedFor.current = key
+        const pad = 48
+        const k = Math.min(
+            (el.clientWidth - pad * 2) / canvas.width,
+            (el.clientHeight - pad * 2) / canvas.height,
+        )
+        fitTo(Math.max(0.1, Math.min(1, k)), el.clientWidth, el.clientHeight, canvas)
+    }, [canvas, fitTo])
 
     // Deliberately not theme-dependent: this is a control-room surface, and the
     // health palette is tuned against this one dark ground.
     const gridDotFill = "oklch(0.3 0.014 250 / 0.55)"
     const overlayButton = "border-[var(--ss-border)] bg-[var(--ss-card)]/90 text-[var(--ss-foreground)] hover:bg-[var(--ss-muted)] backdrop-blur"
-    const overlayActive = "border-[var(--health-healthy)] bg-[var(--ss-muted)] text-[var(--ss-foreground)] backdrop-blur"
 
     return (
         <div className="w-full h-full flex flex-col">
-            <div className="relative flex-1 min-h-0">
+            <div ref={wrapRef} className="relative flex-1 min-h-0">
                 <svg
                     {...panZoomHandlers}
                     onClick={() => selectService(null)}
@@ -71,30 +88,15 @@ const MapView = () => {
                         ))}
                     </g>
                 </svg>
-                <div className="absolute top-3 right-3 flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setLayoutMode(isAuto ? "manual" : "auto")}
-                        className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${isAuto ? overlayActive : overlayButton}`}
-                        aria-pressed={isAuto}
-                    >
-                        Auto layout
-                    </button>
-                    {!isReset && (
-                        <button
-                            type="button"
-                            onClick={reset}
-                            className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${overlayButton}`}
-                            aria-label="Reset view"
-                        >
-                            Reset view
-                        </button>
-                    )}
+                <div
+                    className={`absolute bottom-3 right-3 flex items-center gap-1 rounded-md border p-1 font-mono text-xs ${overlayButton}`}
+                >
+                    <button type="button" className="inline-flex h-6 min-w-6 items-center justify-center rounded" onClick={() => zoomBy(1 / 1.25)} aria-label="Zoom out">-</button>
+                    <span className="w-11 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
+                    <button type="button" className="inline-flex h-6 min-w-6 items-center justify-center rounded" onClick={() => zoomBy(1.25)} aria-label="Zoom in">+</button>
+                    <button type="button" className="inline-flex h-6 items-center justify-center rounded px-2" onClick={() => { fittedFor.current = ""; reset() }} aria-label="Fit to view">Fit</button>
                 </div>
-                <div className={`absolute bottom-3 right-3 px-2 py-1 rounded-md border text-[10px] tabular-nums ${overlayButton}`}>
-                    {Math.round(zoom * 100)}%
-                </div>
-                <MapLegend />
+                {!ambient && <MapLegend />}
                 <Tooltip pan={pan} zoom={zoom} />
             </div>
             <TimelineScrubber />

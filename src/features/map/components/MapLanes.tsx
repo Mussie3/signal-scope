@@ -1,6 +1,6 @@
 import { useMapStore } from "../store"
 import { useLaneHealth } from "../hooks/useLaneHealth"
-import { EXTERNAL_LANE } from "../layout"
+import { EXTERNAL_LANE, regionCode } from "../regions"
 import { healthColor } from "./ServiceShape"
 import type { ServiceStatus } from "../types"
 
@@ -18,6 +18,9 @@ import type { ServiceStatus } from "../types"
 
 const LANE_TOP = 10
 const HEADER_Y = 36
+/** Rough advance width per character at the header's two font sizes. */
+const LABEL_CH = 8.4
+const CODE_CH = 6.2
 
 const MapLanes = ({ height }: { height: number }) => {
     const lanes = useMapStore(s => s.lanes)
@@ -36,13 +39,18 @@ const MapLanes = ({ height }: { height: number }) => {
                     ? "var(--lane-border)"
                     : healthColor(worst)
 
+                const code = regionCode(lane.key)
+                const labelEnd = 38 + lane.label.length * LABEL_CH
+                const codeStart = lane.width - 18 - code.length * CODE_CH
+                const codeFits = codeStart - labelEnd > 12
+
                 return (
                     <g key={lane.key}>
                         <rect
                             x={lane.x}
                             y={LANE_TOP}
                             width={lane.width}
-                            height={Math.max(height - LANE_TOP * 2, 160)}
+                            height={Math.max(height - LANE_TOP * 2, 420)}
                             rx={18}
                             fill={external ? "none" : "var(--lane)"}
                             stroke={external ? "var(--ss-muted-foreground)" : "var(--lane-border)"}
@@ -53,16 +61,22 @@ const MapLanes = ({ height }: { height: number }) => {
                         <text x={lane.x + 38} y={HEADER_Y + 5} fontSize={15} fontWeight={600} fill="var(--ss-foreground)">
                             {lane.label}
                         </text>
-                        <text
-                            x={lane.x + lane.width - 18}
-                            y={HEADER_Y + 5}
-                            textAnchor="end"
-                            fontSize={11}
-                            fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-                            fill="var(--ss-muted-foreground)"
-                        >
-                            {external ? "not yours to fix" : "region"}
-                        </text>
+                        {/* The provider's slug is the first thing to go when a
+                            lane is narrow: "Outside your system" printed over
+                            "third parties" is less use than either alone, and
+                            the city name is the one you navigate by. */}
+                        {codeFits && (
+                            <text
+                                x={lane.x + lane.width - 18}
+                                y={HEADER_Y + 5}
+                                textAnchor="end"
+                                fontSize={11}
+                                fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+                                fill="var(--ss-muted-foreground)"
+                            >
+                                {code}
+                            </text>
+                        )}
                     </g>
                 )
             })}

@@ -1,42 +1,73 @@
 import { useMapStore } from "../store"
 import { useServiceStatus } from "../hooks/useServiceStatus"
-import { kindIcon } from "../kinds"
+import { regionShort } from "../regions"
+import { healthColor } from "./ServiceShape"
 import type { Service } from "../types"
-import StatusDot from "./StatusDot"
 
-type Props = {
-    service: Service
-    isDark: boolean
+/** The legend's swatch at list scale: colour plus glyph, never colour alone. */
+const StatusDot = ({ service }: { service: Service }) => {
+    const { status } = useServiceStatus(service.id)
+    const quiet = status === "healthy" || status === "no_data"
+    return (
+        <svg width={14} height={14} viewBox="-9 -9 18 18" className="shrink-0">
+            <circle
+                r={7}
+                fill={status === "down" ? "var(--health-down)" : quiet ? "var(--ss-background)" : healthColor(status)}
+                stroke={healthColor(status)}
+                strokeWidth={2}
+                strokeDasharray={status === "no_data" ? "2 2.5" : undefined}
+            />
+            {status === "failing" && <rect x={-1} y={-4} width={2} height={4.6} fill="var(--glyph-ink)" />}
+            {status === "slow" && <path d="M0 -3.4 V0 L2 1.4" stroke="var(--glyph-ink)" strokeWidth={1.7} fill="none" strokeLinecap="round" />}
+            {status === "down" && <path d="M-2.8 -2.8 L2.8 2.8 M2.8 -2.8 L-2.8 2.8" stroke="var(--ss-foreground)" strokeWidth={1.9} strokeLinecap="round" />}
+        </svg>
+    )
 }
 
-const ServiceListItem = ({ service, isDark }: Props) => {
-    const { color, label } = useServiceStatus(service.id)
+/**
+ * One line per service.
+ *
+ * The second line used to carry "API · EU-CENTRAL-1", which halved how many
+ * services fit in the column and repeated information the map already encodes
+ * by shape and by lane. A two-letter region on the right is enough to tell two
+ * identically-named services apart, which is the only ambiguity that exists.
+ *
+ * The name is monospace because it is an identifier — it has to match what the
+ * person already has open in a terminal.
+ */
+const ServiceListItem = ({ service }: { service: Service }) => {
+    const { status } = useServiceStatus(service.id)
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
     const selectService = useMapStore(s => s.selectService)
-    const Icon = kindIcon(service.kind)
+    const setHoveredEntity = useMapStore(s => s.setHoveredEntity)
     const isSelected = selectedServiceId === service.id
-
-    const itemBase = isDark
-        ? "hover:bg-white/[0.05]"
-        : "hover:bg-black/[0.04]"
-    const itemSelected = isDark
-        ? "bg-white/[0.10] hover:bg-white/[0.10]"
-        : "bg-black/[0.06] hover:bg-black/[0.06]"
+    const quiet = status === "healthy" || status === "no_data"
 
     return (
         <button
             type="button"
-            onClick={() => selectService(service.id)}
-            className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${itemBase} ${isSelected ? itemSelected : ""}`}
+            onClick={() => selectService(isSelected ? null : service.id)}
+            onPointerEnter={() => setHoveredEntity({ kind: "service", id: service.id })}
+            onPointerLeave={() => setHoveredEntity(null)}
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-[5px] text-left transition-colors"
+            style={{
+                background: isSelected ? "var(--ss-muted)" : "transparent",
+                color: "var(--ss-foreground)",
+            }}
         >
-            <StatusDot color={color} />
-            <Icon className="w-4 h-4 flex-none opacity-70" />
-            <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{service.name}</div>
-                <div className="text-[10px] uppercase tracking-wider opacity-50 mt-0.5">
-                    {service.region} · {label}
-                </div>
-            </div>
+            <StatusDot service={service} />
+            <span
+                className="min-w-0 flex-1 truncate font-mono text-[13px]"
+                style={{ color: quiet ? "var(--ss-foreground)" : healthColor(status) }}
+            >
+                {service.name}
+            </span>
+            <span
+                className="shrink-0 font-mono text-[11px] tracking-wide"
+                style={{ color: "var(--ss-muted-foreground)" }}
+            >
+                {regionShort(service.region || "unknown")}
+            </span>
         </button>
     )
 }

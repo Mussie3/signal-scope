@@ -1,102 +1,128 @@
-import { Service, Connection } from "./types";
+import type { Service, Connection, ServiceKind } from "./types"
 
-const Frontend: Service = {
-    id: "frontend",
-    name: "Frontend",
-    kind: "api",
-    region: "US East",
-    position: { x: 500, y: 100 },
-}
+/**
+ * The demo topology.
+ *
+ * Deliberately the size of a real system rather than the six nodes that fit on
+ * a slide. A map's whole problem is legibility at scale: lanes, tiering, edge
+ * routing and dimming are all answers to a question six services never ask, and
+ * a demo that never asks it demonstrates nothing.
+ *
+ * Shaped like an estate that actually exists — the same service names repeated
+ * per region, a couple of jobs nobody assigned a region to, and third parties
+ * you depend on but cannot fix.
+ */
 
-const AuthAPI: Service = {
-    id: "auth-api",
-    name: "Auth API",
-    kind: "api",
-    region: "US East",
-    position: { x: 280, y: 280 },
-}
+const REGIONS = ["eu-central-1", "us-east-1", "ap-southeast-1"] as const
 
-const ProductAPI: Service = {
-    id: "product-api",
-    name: "Product API",
-    kind: "api",
-    region: "EU Central",
-    position: { x: 720, y: 280 },
-}
-
-const UserDB: Service = {
-    id: "user-db",
-    name: "User DB",
-    kind: "database",
-    region: "US East",
-    position: { x: 200, y: 480 },
-}
-
-const ProductDB: Service = {
-    id: "product-db",
-    name: "Product DB",
-    kind: "database",
-    region: "EU Central",
-    position: { x: 620, y: 480 },
-}
-
-const ProductCache: Service = {
-    id: "product-cache",
-    name: "Product Cache",
-    kind: "cache",
-    region: "Asia Pacific",
-    position: { x: 870, y: 480 },
-}
-
-const FrontendAuthAPIConnection: Connection = {
-    id: "frontend-auth-api-connection",
-    sourceId: Frontend.id,
-    targetId: AuthAPI.id,
-    buffer: []
-}
-
-const AuthAPIUserDBConnection: Connection = {
-    id: "auth-api-user-db-connection",
-    sourceId: AuthAPI.id,
-    targetId: UserDB.id,
-    buffer: []
-}
-
-const FrontendProductAPIConnection: Connection = {
-    id: "frontend-product-api-connection",
-    sourceId: Frontend.id,
-    targetId: ProductAPI.id,
-    buffer: []
-}
-
-const ProductAPIProductDBConnection: Connection = {
-    id: "product-api-product-db-connection",
-    sourceId: ProductAPI.id,
-    targetId: ProductDB.id,
-    buffer: []
-}
-
-const ProductAPIProductCacheConnection: Connection = {
-    id: "product-api-product-cache-connection",
-    sourceId: ProductAPI.id,
-    targetId: ProductCache.id,
-    buffer: []
-}
-
-
-export const seedServices: Service[] = [
-    Frontend,
-    AuthAPI,
-    UserDB,
-    ProductAPI,
-    ProductDB,
-    ProductCache
+/** Tiers only set the seed positions; real depth is computed by the layout. */
+const TIERS: Array<Array<[string, ServiceKind]>> = [
+    [["web", "frontend"], ["mobile-gw", "frontend"]],
+    [["users", "api"], ["auth", "api"], ["catalog", "api"], ["search", "api"], ["checkout", "api"]],
+    [["notify", "api"], ["inventory", "api"], ["orders", "api"], ["payments", "api"]],
+    [["session-cache", "cache"], ["catalog-cache", "cache"]],
+    [["users-db", "database"], ["catalog-db", "database"], ["orders-db", "database"]],
 ]
 
-export const seedConnections: Connection[] = [
-    FrontendAuthAPIConnection,
-    AuthAPIUserDBConnection,
-    FrontendProductAPIConnection,
-    ProductAPIProductDBConnection,
-    ProductAPIProductCacheConnection
+const LOCAL_EDGES = [
+    "web>auth", "web>catalog", "web>search", "web>checkout",
+    "mobile-gw>users", "mobile-gw>auth", "mobile-gw>catalog", "mobile-gw>checkout",
+    "users>users-db", "auth>users-db", "auth>session-cache",
+    "catalog>catalog-cache", "catalog>catalog-db", "search>catalog-cache",
+    "checkout>orders", "checkout>payments", "checkout>inventory", "checkout>session-cache",
+    "orders>orders-db", "orders>notify", "payments>orders-db",
+    "inventory>catalog-db", "inventory>orders-db",
 ]
+
+/** A CDN calls you; you call everyone else. Direction matters for the layout. */
+const EXTERNAL_EDGES = [
+    "ext:cloudflare>web",
+    "payments>ext:stripe",
+    "notify>ext:sendgrid",
+    "notify>ext:twilio",
+    "catalog>ext:s3",
+]
+
+/**
+ * Names are NOT prettified.
+ *
+ * "orders-db" is what the service calls itself in its OTel resource
+ * attributes, what its deployment is named, and what someone will grep for.
+ * Rendering it as "Orders DB" makes the map read like marketing and breaks the
+ * one thing a label is for: matching what you already have on screen
+ * elsewhere.
+ */
+const build = () => {
+    const services: Service[] = []
+    const connections: Connection[] = []
+    const seen = new Set<string>()
+
+    const connect = (from: string, to: string) => {
+        const id = `${from}>${to}`
+        if (seen.has(id) || from === to) return
+        seen.add(id)
+        connections.push({ id, sourceId: from, targetId: to, buffer: [] })
+    }
+
+    REGIONS.forEach((region, r) => {
+        const laneX = r * 620
+        TIERS.forEach((tier, t) => {
+            tier.forEach(([name, kind], i) => {
+                services.push({
+                    id: `${region}:${name}`,
+                    name,
+                    kind,
+                    region,
+                    position: { x: laneX + 260 + (i - (tier.length - 1) / 2) * 104, y: 90 + t * 128 },
+                })
+            })
+        })
+        LOCAL_EDGES.forEach(e => {
+            const [a, b] = e.split(">")
+            connect(`${region}:${a}`, `${region}:${b}`)
+        })
+        EXTERNAL_EDGES.forEach(e => {
+            const [a, b] = e.split(">")
+            connect(a.startsWith("ext:") ? a : `${region}:${a}`, b.startsWith("ext:") ? b : `${region}:${b}`)
+        })
+    })
+
+    // Jobs nobody assigned a region to. They exist in every real estate, and
+    // they are the reason "unknown" is a lane rather than an error.
+    const unassigned: Array<[string, ServiceKind]> = [
+        ["legacy-batch", "api"], ["report-worker", "api"], ["archive-db", "database"],
+    ]
+    unassigned.forEach(([name, kind], i) => {
+        services.push({
+            id: `unknown:${name}`,
+            name,
+            kind,
+            region: "unknown",
+            position: { x: 3 * 620 + 120, y: 90 + (i + 1) * 128 },
+        })
+    })
+    connect("unknown:legacy-batch", "unknown:archive-db")
+    connect("unknown:report-worker", "unknown:archive-db")
+    // One cross-region dependency, because they always exist and they are the
+    // edges nobody remembers until they break.
+    connect("unknown:report-worker", "eu-central-1:orders-db")
+
+    // Third parties: observable, not fixable.
+    const externals = ["cloudflare", "stripe", "sendgrid", "twilio", "s3"]
+    externals.forEach((name, i) => {
+        services.push({
+            id: `ext:${name}`,
+            name,
+            kind: "external",
+            region: "third-party",
+            position: { x: 3 * 620 + 420, y: 90 + i * 128 },
+        })
+    })
+
+    return { services, connections }
+}
+
+const { services, connections } = build()
+
+export const seedServices: Service[] = services
+export const seedConnections: Connection[] = connections

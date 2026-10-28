@@ -75,17 +75,32 @@ Deno.test("third parties are laned separately and do not deepen your graph", () 
     ok(lanes[lanes.length - 1].key === EXTERNAL_LANE, "externals are laned last")
 })
 
-Deno.test("regions become lanes, busiest first, unknown before external", () => {
+Deno.test("lane order follows the declared regions, not headcount", () => {
+    // us-east-1 holds three services to eu-central-1's one, so an order driven
+    // by headcount would put it first. It must not: lanes that reshuffle when a
+    // region gains a service force everyone to re-find the whole map.
     const { lanes } = computeLayout(
         [
-            svc("a", "api", "eu-central-1"), svc("b", "api", "eu-central-1"), svc("c", "api", "eu-central-1"),
-            svc("d", "api", "us-east-1"),
+            svc("a", "api", "us-east-1"), svc("b", "api", "us-east-1"), svc("c", "api", "us-east-1"),
+            svc("d", "api", "eu-central-1"),
             svc("e", "api", "unknown"),
             svc("f", "external", "unknown"),
         ],
         [],
     )
     eq(lanes.map((l) => l.key).join(","), "eu-central-1,us-east-1,unknown,__external__", "lane order")
+})
+
+Deno.test("an undeclared region still gets a stable lane, after the known ones", () => {
+    const { lanes } = computeLayout(
+        [
+            svc("a", "api", "ap-southeast-1"),
+            svc("b", "api", "mars-north-1"),
+            svc("c", "api", "eu-central-1"),
+        ],
+        [],
+    )
+    eq(lanes.map((l) => l.key).join(","), "eu-central-1,ap-southeast-1,mars-north-1", "lane order")
 })
 
 Deno.test("lanes do not overlap", () => {

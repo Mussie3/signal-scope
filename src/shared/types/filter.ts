@@ -16,3 +16,17 @@ export const RANGE_TO_MS: Record<Range, number> = {
     "Last 5 minutes": 5 * 60_000,
     "Last 15 minutes": 15 * 60_000,
 }
+
+/**
+ * What the picker shows.
+ *
+ * The Range values are the stored keys and read as prose; the control itself
+ * sits beside a region picker in a dense bar, where "Last 15 minutes" costs
+ * three times the width of the thing it is telling you.
+ */
+export const RANGE_LABEL: Record<Range, string> = {
+    "Last 30 seconds": "Window 30s",
+    "Last 1 minute": "Window 1m",
+    "Last 5 minutes": "Window 5m",
+    "Last 15 minutes": "Window 15m",
+}

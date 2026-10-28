@@ -59,8 +59,8 @@ const ConnectionEdge = ({ connection, source, target }: Props) => {
     const touchesExternal = source.kind === "external" || target.kind === "external"
     const quiet = targetStatus === "healthy" || targetStatus === "no_data"
 
-    const opacity = !isInRegion ? 0.1
-        : isDimmedBySelection ? 0.18
+    const opacity = !isInRegion ? 0.14
+        : isDimmedBySelection ? 0.22
             : touchesExternal && quiet ? 0.45
                 : 1
 
