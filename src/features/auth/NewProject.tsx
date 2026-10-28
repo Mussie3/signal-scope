@@ -20,6 +20,7 @@ const NewProject = () => {
     const { session } = useSession()
     const [open, setOpen] = useState(false)
     const [slug, setSlug] = useState("")
+    const [origins, setOrigins] = useState("")
     const [busy, setBusy] = useState(false)
     const [token, setToken] = useState<string | null>(null)
     const [note, setNote] = useState<string | null>(null)
@@ -41,9 +42,18 @@ const NewProject = () => {
             // common case is coming back to mint another key.
             if (insErr && !insErr.message.includes("duplicate")) throw new Error(insErr.message)
 
+            // The origins are where the MONITORED app runs, which is almost
+            // never this one. Defaulting to location.origin looked convenient
+            // and produced a key that 403s from the only site it was meant for
+            // -- the tool cannot guess this, so it has to ask.
+            const list = origins
+                .split(/[,\s]+/)
+                .map(o => o.trim().replace(/\/$/, ""))
+                .filter(Boolean)
+
             const { data, error: keyErr } = await supabase.rpc("create_publishable_key", {
                 p_slug: slug,
-                p_origins: [location.origin, "http://localhost:5173"],
+                p_origins: list,
                 p_name: "browser",
             })
             if (keyErr) throw new Error(keyErr.message)
@@ -84,9 +94,20 @@ const NewProject = () => {
                         className="mb-2 h-8 w-full rounded-md border px-2 font-mono text-xs outline-none"
                         style={{ borderColor: "var(--ss-border)", background: "var(--ss-muted)", color: "var(--ss-foreground)" }}
                     />
+                    <p className="pb-1 text-[11px] leading-relaxed" style={{ color: "var(--ss-muted-foreground)" }}>
+                        Origins allowed to report, comma separated. These are where the app you are
+                        monitoring runs, not where this page is.
+                    </p>
+                    <input
+                        placeholder="https://your-app.com, http://localhost:5173"
+                        value={origins}
+                        onChange={e => setOrigins(e.target.value)}
+                        className="mb-2 h-8 w-full rounded-md border px-2 font-mono text-[11px] outline-none"
+                        style={{ borderColor: "var(--ss-border)", background: "var(--ss-muted)", color: "var(--ss-foreground)" }}
+                    />
                     <button
                         type="button"
-                        disabled={busy || !/^[a-z0-9][a-z0-9-]{0,62}$/.test(slug)}
+                        disabled={busy || !origins.trim() || !/^[a-z0-9][a-z0-9-]{0,62}$/.test(slug)}
                         onClick={create}
                         className="h-7 w-full rounded-md text-xs font-medium disabled:opacity-40"
                         style={{ background: "var(--health-healthy)", color: "var(--ss-background)" }}
