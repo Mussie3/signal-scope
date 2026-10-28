@@ -6,6 +6,7 @@ import { useModeStore, MODE_LABEL, MODE_HINT, type MapMode } from "@/features/ma
 import { ALL_REGIONS, RANGE_LABEL, type Range } from "@/shared/types/filter"
 import { regionLabel } from "@/features/map/regions"
 import AccountMenu from "@/features/auth/AccountMenu"
+import NewProject from "@/features/auth/NewProject"
 import ProjectPicker from "@/features/auth/ProjectPicker"
 import SignalScopeIcon from "@/shared/ui/icons/SignalScopeIcon"
 
@@ -126,6 +127,7 @@ const TopBar = () => {
 
             <div className={`flex items-center gap-2 ${ambient ? "ml-auto" : ""}`}>
                 {!ambient && <ProjectPicker />}
+                {!ambient && <NewProject />}
                 <TimeBadge />
                 {!ambient && <AccountMenu />}
             </div>
