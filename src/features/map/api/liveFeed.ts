@@ -1,9 +1,9 @@
 import { useEffect } from "react"
 import { supabase, projectSlug } from "@/shared/api/supabase"
 import { useMapStore } from "../store"
+import { asServiceKind } from "../kinds"
 import { PRUNE_WINDOW_MS } from "../constants"
 import type { Connection, RequestEvent, Service } from "../types"
-import type { ServiceRegion } from "@/shared/types/filter"
 
 /**
  * The remote counterpart to useSimulation().
@@ -23,8 +23,11 @@ type TopologyPayload = {
   services: Array<{
     id: string
     name: string
-    kind: Service["kind"]
-    region: ServiceRegion
+    // Typed as string deliberately: these are whatever Postgres holds, and its
+    // service_kind enum can gain values this UI has never heard of. Asserting
+    // the union here is a lie the compiler cannot catch.
+    kind: string
+    region: string
     position: { x: number; y: number }
   }>
   connections: Array<{ id: string; sourceId: string; targetId: string }>
@@ -56,7 +59,7 @@ export const useRemoteTopology = (enabled: boolean) => {
         const services: Service[] = payload.services.map((s) => ({
           id: s.id,
           name: s.name,
-          kind: s.kind,
+          kind: asServiceKind(s.kind),
           region: s.region,
           position: s.position,
         }))

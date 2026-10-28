@@ -1,17 +1,19 @@
 import { create } from "zustand";
-import { Region, Range } from "@/shared/types/filter";
+import { ALL_REGIONS, Range } from "@/shared/types/filter";
 
 type FilterState = {
-    region: Region
+    // A free-text region, or ALL_REGIONS for "no filter". Not a closed union:
+    // the available regions depend on what the topology actually reported.
+    region: string
     range: Range
     search: string
-    setRegion: (region: Region) => void
+    setRegion: (region: string) => void
     setRange: (range: Range) => void
     setSearch: (search: string) => void
 }
 
 export const useFilterStore = create<FilterState>((set) => ({
-    region: "All Region",
+    region: ALL_REGIONS,
     setRegion: (region) => set({region}),
     range: "Last 1 minute",
     setRange: (range) => set({range}),

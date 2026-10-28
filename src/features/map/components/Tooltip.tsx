@@ -4,7 +4,7 @@ import { RANGE_TO_MS } from "@/shared/types/filter"
 import { useMapStore } from "../store"
 import { useServiceStatus } from "../hooks/useServiceStatus"
 import { usePlaybackTime } from "../hooks/usePlaybackTime"
-import { KIND_LABEL } from "../kinds"
+import { kindLabel } from "../kinds"
 
 type Props = {
     pan: { x: number; y: number }
@@ -67,7 +67,7 @@ const ServiceTooltip = ({ serviceId, pan, zoom, containerStyles }: ServiceToolti
             style={{ left: screenX, top: screenY, transform: "translate(-50%, -100%)" }}
         >
             <div className="text-[10px] uppercase tracking-wider opacity-50 mb-0.5 whitespace-nowrap">
-                {KIND_LABEL[service.kind]} · {service.region}
+                {kindLabel(service.kind)} · {service.region}
             </div>
             <div className="text-sm font-semibold mb-1 whitespace-nowrap">{service.name}</div>
             <div className="flex items-center gap-2 text-xs whitespace-nowrap">

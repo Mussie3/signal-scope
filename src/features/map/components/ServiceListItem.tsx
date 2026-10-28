@@ -1,6 +1,6 @@
 import { useMapStore } from "../store"
 import { useServiceStatus } from "../hooks/useServiceStatus"
-import { KIND_ICON } from "../kinds"
+import { kindIcon } from "../kinds"
 import type { Service } from "../types"
 import StatusDot from "./StatusDot"
 
@@ -13,7 +13,7 @@ const ServiceListItem = ({ service, isDark }: Props) => {
     const { color, label } = useServiceStatus(service.id)
     const selectedServiceId = useMapStore(s => s.selectedServiceId)
     const selectService = useMapStore(s => s.selectService)
-    const Icon = KIND_ICON[service.kind]
+    const Icon = kindIcon(service.kind)
     const isSelected = selectedServiceId === service.id
 
     const itemBase = isDark

@@ -2,7 +2,7 @@ import { useFilterStore } from "@/shared/store/filter.store"
 import { useThemeStore } from "@/shared/store/theme.store"
 import { useMapStore } from "../store"
 import { useSelectedServiceMetrics } from "../hooks/useSelectedServiceMetrics"
-import { KIND_LABEL } from "../kinds"
+import { kindLabel } from "../kinds"
 import StatusPill from "./StatusPill"
 
 const Stat = ({ label, value }: { label: string; value: string }) => (
@@ -94,7 +94,7 @@ const SelectedServicePanel = ({
             <div className={`flex items-start justify-between px-5 pt-5 pb-4 border-b ${dividerColor}`}>
                 <div className="min-w-0 flex-1">
                     <div className="text-[10px] uppercase tracking-[0.14em] opacity-50 mb-1.5">
-                        {KIND_LABEL[service.kind]} · {service.region}
+                        {kindLabel(service.kind)} · {service.region}
                     </div>
                     <h2 className="text-lg font-semibold truncate">{service.name}</h2>
                 </div>
