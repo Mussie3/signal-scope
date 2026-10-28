@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react"
 import usePanZoom from "@/shared/hooks/usePanZoom"
 import { useMapStore } from "../store"
 import { useModeStore } from "../mode.store"
+import { feedMode } from "@/shared/api/supabase"
 import ConnectionEdge from "./ConnectionEdge"
 import ServiceNode from "./ServiceNode"
 import MapLanes from "./MapLanes"
@@ -96,7 +97,17 @@ const MapView = () => {
                     <button type="button" className="inline-flex h-6 min-w-6 items-center justify-center rounded" onClick={() => zoomBy(1.25)} aria-label="Zoom in">+</button>
                     <button type="button" className="inline-flex h-6 items-center justify-center rounded px-2" onClick={() => { fittedFor.current = ""; reset() }} aria-label="Fit to view">Fit</button>
                 </div>
-                {!ambient && <MapLegend />}
+                {/* Remote starts with nothing, because inventing a topology to
+                    fill the gap would mean showing an estate that does not
+                    exist. Saying so is the honest way to fill a second. */}
+                {serviceIds.length === 0 && (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                        <p className="font-mono text-sm" style={{ color: "var(--ss-muted-foreground)" }}>
+                            {feedMode === "remote" ? "Connecting to your topology..." : "No services reporting."}
+                        </p>
+                    </div>
+                )}
+                {!ambient && serviceIds.length > 0 && <MapLegend />}
                 <Tooltip pan={pan} zoom={zoom} />
             </div>
             <TimelineScrubber />
