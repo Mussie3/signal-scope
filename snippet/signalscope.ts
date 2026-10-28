@@ -74,6 +74,9 @@ export type Call = {
   endMs: number
   status?: number
   failed?: boolean
+  /** Reuse a span id already sent downstream as traceparent, so the backend's
+   *  SERVER span names this exact span as its parent. */
+  spanId?: string
 }
 
 const SPAN_KIND_CLIENT = 3
@@ -155,7 +158,7 @@ export const createCollector = (config: CollectorConfig) => {
 
     buffer.push({
       traceId: pageTraceId,
-      spanId: hex(8, random),
+      spanId: call.spanId ?? hex(8, random),
       name: `${call.method ?? 'GET'} ${host}`,
       kind: SPAN_KIND_CLIENT,
       startTimeUnixNano: String(Math.round(call.startMs * 1e6)),
@@ -224,7 +227,7 @@ export const createCollector = (config: CollectorConfig) => {
     }
   }
 
-  return { record, flush, buildPayload, pending: () => buffer.length, _now: now }
+  return { record, flush, buildPayload, pending: () => buffer.length, traceId: pageTraceId, newSpanId: () => hex(8, random), _now: now }
 }
 
 export type Collector = ReturnType<typeof createCollector>
@@ -238,26 +241,131 @@ export const install = (config: CollectorConfig): Collector => {
   const collector = createCollector(config)
   if (typeof window === 'undefined') return collector
 
-  const { flushIntervalMs = 15_000 } = config
+  const { flushIntervalMs = 15_000, firstPartyOrigins = [] } = config
   const selfOrigin = location.origin
+
+  /**
+   * Whether to hand this request a traceparent.
+   *
+   * ONLY first-party origins, and this restriction is not caution -- it is
+   * correctness. traceparent is not a CORS-safelisted header, so adding it to
+   * a cross-origin request forces a preflight, and a third party that does not
+   * answer OPTIONS with the right Access-Control-Allow-Headers will have the
+   * request fail outright. Instrumenting a page must never break the page, and
+   * Stripe does not need our trace id anyway.
+   *
+   * Same-origin calls are included: an API served from the page's own origin
+   * is still a backend worth joining the trace to.
+   */
+  const shouldTrace = (url: string): boolean => {
+    const origin = originOf(url)
+    if (!origin) return false
+    return origin === selfOrigin || firstPartyOrigins.includes(origin)
+  }
+
+  /** W3C trace context: version-traceid-spanid-flags. 01 = sampled. */
+  const traceparent = (spanId: string) => `00-${collector.traceId}-${spanId}-01`
 
   const origFetch = window.fetch
   window.fetch = async function (...args: Parameters<typeof fetch>) {
     const start = performance.timeOrigin + performance.now()
     const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request).url ?? String(args[0])
     const method = (args[1]?.method ?? (args[0] as Request)?.method ?? 'GET').toUpperCase()
+
+    // The span id is minted HERE, before the call, so the header sent
+    // downstream and the span reported upstream carry the same id. Generating
+    // it at record() time would send one id and report another, and the
+    // backend's SERVER span would name a parent that does not exist.
+    let spanId: string | undefined
+    if (shouldTrace(url)) {
+      spanId = collector.newSpanId()
+      try {
+        if (args[0] instanceof Request) {
+          // A Request's headers are immutable once constructed, so the only
+          // way to add one is to build a new Request from it.
+          const headers = new Headers(args[0].headers)
+          headers.set('traceparent', traceparent(spanId))
+          args[0] = new Request(args[0], { headers })
+        } else {
+          const init = (args[1] ?? {}) as RequestInit
+          const headers = new Headers(init.headers)
+          headers.set('traceparent', traceparent(spanId))
+          args[1] = { ...init, headers }
+        }
+      } catch {
+        // Header injection is best effort. If anything about this request
+        // resists it, report the call untraced rather than fail it.
+        spanId = undefined
+      }
+    }
+
     try {
       const res = await origFetch.apply(this, args)
-      collector.record({ url, method, startMs: start, endMs: performance.timeOrigin + performance.now(), status: res.status })
+      collector.record({ url, method, spanId, startMs: start, endMs: performance.timeOrigin + performance.now(), status: res.status })
       return res
     } catch (err) {
-      collector.record({ url, method, startMs: start, endMs: performance.timeOrigin + performance.now(), failed: true })
+      collector.record({ url, method, spanId, startMs: start, endMs: performance.timeOrigin + performance.now(), failed: true })
       throw err
     }
   }
 
-  // Resource Timing catches what fetch wrapping cannot: images, scripts, beacons,
-  // and anything loaded before this script ran.
+  /**
+   * XHR, which is not a legacy concern.
+   *
+   * The Resource Timing sweep below skips xmlhttprequest entries on the
+   * grounds that they are "already wrapped" -- but nothing wrapped them, so
+   * until now XHR traffic was reported by neither path and simply did not
+   * exist on the map. axios still uses XHR in browsers by default, so for a
+   * large share of apps that meant no API calls at all.
+   */
+  const XhrProto = XMLHttpRequest.prototype
+  const origOpen = XhrProto.open
+  const origSend = XhrProto.send
+
+  type Tracked = XMLHttpRequest & { __ss?: { url: string; method: string; start: number; spanId?: string } }
+
+  // Typed through the real signatures rather than cast away: `any` here would
+  // hide a genuine mistake, since open() and send() have overloads whose
+  // argument shapes differ.
+  type OpenArgs = Parameters<typeof XMLHttpRequest.prototype.open>
+  type SendArgs = Parameters<typeof XMLHttpRequest.prototype.send>
+
+  XhrProto.open = function (this: Tracked, ...args: OpenArgs) {
+    this.__ss = { url: String(args[1]), method: String(args[0]).toUpperCase(), start: 0 }
+    return origOpen.apply(this, args)
+  }
+
+  XhrProto.send = function (this: Tracked, ...args: SendArgs) {
+    const meta = this.__ss
+    if (meta) {
+      meta.start = performance.timeOrigin + performance.now()
+      if (shouldTrace(meta.url)) {
+        meta.spanId = collector.newSpanId()
+        try {
+          this.setRequestHeader('traceparent', traceparent(meta.spanId))
+        } catch {
+          // setRequestHeader throws if the request is not OPEN. Report it
+          // untraced rather than let instrumentation break the call.
+          meta.spanId = undefined
+        }
+      }
+      this.addEventListener('loadend', () => {
+        collector.record({
+          url: meta.url,
+          method: meta.method,
+          spanId: meta.spanId,
+          startMs: meta.start,
+          endMs: performance.timeOrigin + performance.now(),
+          // status is 0 when the request failed or was aborted.
+          ...(this.status ? { status: this.status } : { failed: true }),
+        })
+      })
+    }
+    return origSend.apply(this, args)
+  }
+
+  // Resource Timing catches what fetch and XHR wrapping cannot: images,
+  // scripts, beacons, and anything loaded before this script ran.
   if (typeof PerformanceObserver !== 'undefined') {
     try {
       // Loading your own JavaScript is not a service call.
