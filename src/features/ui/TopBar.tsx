@@ -5,6 +5,8 @@ import { usePlaybackTime } from "@/features/map/hooks/usePlaybackTime"
 import { useModeStore, MODE_LABEL, MODE_HINT, type MapMode } from "@/features/map/mode.store"
 import { ALL_REGIONS, RANGE_LABEL, type Range } from "@/shared/types/filter"
 import { regionLabel } from "@/features/map/regions"
+import AccountMenu from "@/features/auth/AccountMenu"
+import ProjectPicker from "@/features/auth/ProjectPicker"
 import SignalScopeIcon from "@/shared/ui/icons/SignalScopeIcon"
 
 const RANGES: Range[] = ["Last 30 seconds", "Last 1 minute", "Last 5 minutes", "Last 15 minutes"]
@@ -122,8 +124,10 @@ const TopBar = () => {
                 </div>
             )}
 
-            <div className={ambient ? "ml-auto" : ""}>
+            <div className={`flex items-center gap-2 ${ambient ? "ml-auto" : ""}`}>
+                {!ambient && <ProjectPicker />}
                 <TimeBadge />
+                {!ambient && <AccountMenu />}
             </div>
         </header>
     )
