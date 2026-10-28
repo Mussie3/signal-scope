@@ -33,6 +33,9 @@ type MapState = {
     setHoveredEntity: (entity: HoveredEntity) => void
     setLayoutMode: (mode: LayoutMode) => void
     setTopology: (services: Service[], connections: Connection[]) => void
+    /** True once a topology fetch came back empty, so the UI can explain why. */
+    topologyMissing: boolean
+    setTopologyMissing: (missing: boolean) => void
 }
 
 // The positions "manual" layout mode restores. It starts as the local seed and
@@ -90,6 +93,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     incomingIdsByTarget: indexByTarget(initialConnections),
     selectedServiceId: null,
     hoveredEntity: null,
+    topologyMissing: false,
     // Layered is the default now: a derived topology has no hand-placed
     // positions to fall back on, so "manual" is only meaningful for the seeded
     // demo.
@@ -160,6 +164,7 @@ export const useMapStore = create<MapState>((set, get) => ({
             hoveredEntity: null,
         })
     },
+    setTopologyMissing: (missing) => set({ topologyMissing: missing }),
     selectService: (id) => set({ selectedServiceId: id }),
     setHoveredEntity: (entity) => set({ hoveredEntity: entity }),
     setLayoutMode: (mode) => {

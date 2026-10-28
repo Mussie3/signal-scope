@@ -42,6 +42,7 @@ type BroadcastEvent = {
 
 export const useRemoteTopology = (enabled: boolean) => {
   const setTopology = useMapStore((state) => state.setTopology)
+  const setTopologyMissing = useMapStore((state) => state.setTopologyMissing)
 
   useEffect(() => {
     if (!enabled) return
@@ -50,10 +51,18 @@ export const useRemoteTopology = (enabled: boolean) => {
     supabase
       .rpc("get_topology", { p_slug: projectSlug })
       .then(({ data, error }) => {
-        if (cancelled || error || !data) {
+        if (cancelled) return
+        if (error || !data) {
           if (error) console.error("signalscope: topology load failed", error.message)
+          // A null payload is not a network failure. get_topology returns
+          // nothing for a slug that does not exist AND for one that exists but
+          // is not readable by this key -- RLS hides a private project rather
+          // than erroring. Both look identical from here, so the UI has to say
+          // both, instead of claiming to still be connecting forever.
+          setTopologyMissing(true)
           return
         }
+        setTopologyMissing(false)
         const payload = data as TopologyPayload
 
         const services: Service[] = payload.services.map((s) => ({
@@ -79,7 +88,7 @@ export const useRemoteTopology = (enabled: boolean) => {
     return () => {
       cancelled = true
     }
-  }, [enabled, setTopology])
+  }, [enabled, setTopology, setTopologyMissing])
 }
 
 export const useLiveFeed = (enabled: boolean) => {
