@@ -1,0 +1,51 @@
+# Runs on every pull request, because merging early has twice shipped a
+# fraction of a branch silently. A required check turns that into a visible
+# failure instead of a quiet one.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Build covers typecheck too: the build script is `tsc -b && vite build`.
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
+        # The repo carries pre-existing lint errors. Reporting them without
+        # blocking keeps the signal visible while the gate stays honest about
+        # what it actually guarantees.
+        continue-on-error: true
+
+      # The suites are written for Deno's test runner, which is also what the
+      # Edge Functions run on, so there is no second toolchain to install.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Layout tests
+        run: deno test --allow-read src/features/map/layout.test.ts
+
+      - name: Collector tests
+        run: deno test --allow-read snippet/signalscope.test.ts
+
+      - name: OTLP derivation tests
+        run: deno test --allow-read supabase/functions/_shared/otlp.test.ts
+
+      - name: Ingest auth tests
+        run: deno test --allow-read supabase/functions/_shared/ingest-auth.test.ts

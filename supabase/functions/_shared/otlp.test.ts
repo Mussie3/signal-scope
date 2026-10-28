@@ -45,7 +45,7 @@ const payload = {
         startTimeUnixNano: ns(20), endTimeUnixNano: ns(120), status: { code: 1 },
         attributes: [
           { key: 'db.system', value: { stringValue: 'postgresql' } },
-          { key: 'db.name', value: { stringValue: 'icetracker' } },
+          { key: 'db.name', value: { stringValue: 'shopdb' } },
         ] },
       { traceId: 't1', spanId: 'b3', parentSpanId: 'b1', name: 'GET session', kind: SPAN_KIND.CLIENT,
         startTimeUnixNano: ns(125), endTimeUnixNano: ns(133), status: { code: 1 },
@@ -88,7 +88,7 @@ Deno.test('a service with no inbound spans is an entry point', () => {
 })
 
 Deno.test('uninstrumented peers are synthesised from attributes', () => {
-  eq(svc('postgresql-icetracker')?.kind, 'database', 'postgres kind')
+  eq(svc('postgresql-shopdb')?.kind, 'database', 'postgres kind')
   eq(svc('stripe')?.kind, 'external', 'stripe kind')
 })
 
@@ -103,7 +103,7 @@ Deno.test('span status ERROR becomes success=false', () => {
 })
 
 Deno.test('database latency is the query duration', () => {
-  eq(ev('orders-api', 'postgresql-icetracker')?.latency_ms, 100, 'db latency')
+  eq(ev('orders-api', 'postgresql-shopdb')?.latency_ms, 100, 'db latency')
 })
 
 Deno.test('same-service work produces no edge', () => {
