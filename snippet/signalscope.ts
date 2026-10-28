@@ -36,6 +36,10 @@ export type CollectorConfig = {
   batchSize?: number
   /** Optional region, surfaced as cloud.region. */
   region?: string
+  /** How often to ship whatever is buffered, in ms. 0 disables the timer.
+   *  Page-hide flushing alone is not enough for an installed PWA, which can
+   *  stay visible for hours. */
+  flushIntervalMs?: number
   /** Overrides how a batch leaves the page. Defaults to fetch, with sendBeacon
    *  on page hide. Supplying this routes telemetry through your own proxy - and
    *  makes the collector testable without a network or a browser. */
@@ -224,6 +228,9 @@ export const install = (config: CollectorConfig): Collector => {
   const collector = createCollector(config)
   if (typeof window === 'undefined') return collector
 
+  const { flushIntervalMs = 15_000 } = config
+  const selfOrigin = location.origin
+
   const origFetch = window.fetch
   window.fetch = async function (...args: Parameters<typeof fetch>) {
     const start = performance.timeOrigin + performance.now()
@@ -243,9 +250,22 @@ export const install = (config: CollectorConfig): Collector => {
   // and anything loaded before this script ran.
   if (typeof PerformanceObserver !== 'undefined') {
     try {
+      // Loading your own JavaScript is not a service call.
+      //
+      // Resource Timing reports every script, stylesheet, font and image the
+      // page pulls from its own origin. Reported as spans, those become a
+      // dependency node for the host that serves the app to itself - on a
+      // static deploy that is one bogus node carrying almost all the traffic,
+      // drowning the real backend it sits next to.
+      //
+      // Same-origin fetch and XHR still count: an app whose API shares its
+      // origin is making genuine calls, and those come through the wrapper
+      // above rather than through here.
+      const ASSET_TYPES = new Set(['script', 'link', 'css', 'img', 'image', 'font', 'other'])
       const obs = new PerformanceObserver((list) => {
         for (const entry of list.getEntries() as PerformanceResourceTiming[]) {
           if (entry.initiatorType === 'fetch' || entry.initiatorType === 'xmlhttprequest') continue // already wrapped
+          if (originOf(entry.name) === selfOrigin && ASSET_TYPES.has(entry.initiatorType)) continue
           collector.record({
             url: entry.name,
             method: 'GET',
@@ -261,10 +281,19 @@ export const install = (config: CollectorConfig): Collector => {
   }
 
   // Page hide is the only reliable "last chance" event on mobile Safari.
+  // It is NOT sufficient on its own: an installed PWA left open on a counter
+  // all day never hides, so without a timer its spans sit in the buffer for
+  // hours and the map shows a service that stopped reporting.
   addEventListener('pagehide', () => void collector.flush({ beacon: true }))
   addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') void collector.flush({ beacon: true })
   })
+
+  if (flushIntervalMs > 0) {
+    setInterval(() => {
+      if (collector.pending() > 0) void collector.flush()
+    }, flushIntervalMs)
+  }
 
   return collector
 }
