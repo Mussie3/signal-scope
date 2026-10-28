@@ -1,115 +1,129 @@
-import ApiIcon from "@/shared/ui/icons/ApiIcon"
-import CacheIcon from "@/shared/ui/icons/CacheIcon"
-import DatabaseIcon from "@/shared/ui/icons/DatabaseIcon"
-import FrontendIcon from "@/shared/ui/icons/FrontendIcon"
-import ExternalIcon from "@/shared/ui/icons/ExternalIcon"
-import type { ServiceKind } from "../types"
+import type { ServiceKind, ServiceStatus } from "../types"
 
-const SHAPE_RADIUS = 18
-const ICON_SIZE = 24
-const ICON_OFFSET = -ICON_SIZE / 2
+/**
+ * A node carries three things at once: what KIND of thing it is, how HEALTHY it
+ * is, and — for anyone who cannot separate the health hues — a glyph saying the
+ * same thing in a second channel.
+ *
+ * Kind is the silhouette, health is the stroke. Keeping them on different
+ * properties is what lets both be read at once; filling the whole node with the
+ * health colour (the previous approach) made the kind icon fight it and left
+ * colour as the only carrier of status.
+ */
 
-// Pointy-top hexagon, used for external services.
-const HEX = [
-    [0, -SHAPE_RADIUS],
-    [SHAPE_RADIUS * 0.866, -SHAPE_RADIUS * 0.5],
-    [SHAPE_RADIUS * 0.866, SHAPE_RADIUS * 0.5],
-    [0, SHAPE_RADIUS],
-    [-SHAPE_RADIUS * 0.866, SHAPE_RADIUS * 0.5],
-    [-SHAPE_RADIUS * 0.866, -SHAPE_RADIUS * 0.5],
-]
-    .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
-    .join(" ")
-
-type Props = {
-    kind: ServiceKind
-    fill: string
+const HEALTH_VAR: Record<ServiceStatus, string> = {
+    healthy: "var(--health-healthy)",
+    slow: "var(--health-slow)",
+    failing: "var(--health-failing)",
+    down: "var(--health-down)",
+    no_data: "var(--health-nodata)",
 }
 
-// Each kind gets a distinct SILHOUETTE as well as an icon, so the type of a node
-// survives being small, being zoomed out, and being looked at by someone who
-// cannot distinguish the status colours.
-const ServiceShape = ({ kind, fill }: Props) => {
-    const iconProps = {
-        x: ICON_OFFSET,
-        y: ICON_OFFSET,
-        width: ICON_SIZE,
-        height: ICON_SIZE,
-        style: { color: "white" } as const,
+export const healthColor = (status: ServiceStatus) => HEALTH_VAR[status] ?? "var(--health-nodata)"
+
+interface ShapeProps {
+    kind: ServiceKind
+    status: ServiceStatus
+}
+
+/**
+ * Fill semantics:
+ *   healthy  — the quiet node fill, so a healthy map is calm
+ *   slow/failing — filled with the health colour, so exceptions are loud
+ *   down     — hatched, which reads as "not a colour, an absence"
+ *   no_data  — the background, so it recedes rather than claiming a state
+ */
+const Shape = ({ kind, status }: ShapeProps) => {
+    const stroke = healthColor(status)
+    const fill =
+        status === "down" ? "url(#ss-hatch-down)"
+            : status === "no_data" ? "var(--ss-background)"
+                : status === "healthy" ? "var(--node-fill)"
+                    : stroke
+
+    const external = kind === "external"
+    const p = {
+        fill,
+        fillOpacity: external && status !== "down" ? 0.55 : 1,
+        stroke,
+        strokeWidth: status === "no_data" ? 1.5 : 2.25,
+        // A dashed outline says "not yours". You cannot fix Stripe, and an
+        // incident there should not look like your own service failing.
+        strokeDasharray: external ? "5 3" : status === "no_data" ? "2 3" : undefined,
     }
 
     switch (kind) {
-        case "cache":
-            return (
-                <g>
-                    <polygon
-                        points={`0,-${SHAPE_RADIUS} ${SHAPE_RADIUS},0 0,${SHAPE_RADIUS} -${SHAPE_RADIUS},0`}
-                        fill={fill}
-                    />
-                    <CacheIcon {...iconProps} />
-                </g>
-            )
-        case "database":
-            return (
-                <g>
-                    <rect
-                        x={-SHAPE_RADIUS}
-                        y={-SHAPE_RADIUS}
-                        width={SHAPE_RADIUS * 2}
-                        height={SHAPE_RADIUS * 2}
-                        rx={9}
-                        fill={fill}
-                    />
-                    <DatabaseIcon {...iconProps} />
-                </g>
-            )
         case "frontend":
-            // Wider than tall, like a screen. A frontend is an entry point, and
-            // reads as the place traffic originates rather than another box in
-            // the middle of the system.
-            return (
-                <g>
-                    <rect
-                        x={-SHAPE_RADIUS * 1.3}
-                        y={-SHAPE_RADIUS * 0.85}
-                        width={SHAPE_RADIUS * 2.6}
-                        height={SHAPE_RADIUS * 1.7}
-                        rx={5}
-                        fill={fill}
-                    />
-                    <FrontendIcon {...iconProps} />
-                </g>
-            )
+            // Wide, like a screen: this is where users arrive.
+            return <rect x={-28} y={-16} width={56} height={32} rx={9} {...p} />
+        case "database":
+            return <rect x={-17} y={-17} width={34} height={34} rx={7} {...p} />
+        case "cache":
+            return <polygon points="0,-23 23,0 0,23 -23,0" {...p} />
         case "external":
-            // Dashed outline: this one is not yours. You cannot fix Stripe, so an
-            // incident here reads differently from your own service failing, and
-            // that difference is carried by the stroke rather than by colour -
-            // which keeps it legible to someone who cannot see the status hue.
-            return (
-                <g>
-                    <polygon points={HEX} fill={fill} fillOpacity={0.55} />
-                    <polygon
-                        points={HEX}
-                        fill="none"
-                        stroke={fill}
-                        strokeWidth={2}
-                        strokeDasharray="4 3"
-                    />
-                    <ExternalIcon {...iconProps} />
-                </g>
-            )
+            return <polygon points="21,0 10.5,18.2 -10.5,18.2 -21,0 -10.5,-18.2 10.5,-18.2" {...p} />
         case "api":
         default:
-            // Explicit default, because the previous switch had none: a kind the
-            // UI does not recognise rendered as nothing at all, so a node
-            // silently vanished from the map rather than showing up unstyled.
-            return (
-                <g>
-                    <circle cx={0} cy={0} r={SHAPE_RADIUS} fill={fill} />
-                    <ApiIcon {...iconProps} />
-                </g>
-            )
+            return <circle r={19} {...p} />
     }
 }
 
-export default ServiceShape
+/**
+ * Status without colour. Healthy stays blank on purpose — a mark on every node
+ * would be noise, and "nothing is wrong" is exactly the case that should not
+ * draw the eye.
+ */
+export const HealthGlyph = ({ status, alsoSlow = false }: { status: ServiceStatus; alsoSlow?: boolean }) => {
+    const ink = "var(--glyph-ink)"
+    if (status === "slow") {
+        return (
+            <g stroke={ink} strokeWidth={2} fill="none" strokeLinecap="round">
+                <circle r={6.5} />
+                <path d="M0 -3.5 V0 L3 2" />
+            </g>
+        )
+    }
+    if (status === "failing") {
+        return (
+            <g fill={ink}>
+                <rect x={-1.6} y={-8} width={3.2} height={10} rx={1.4} />
+                <circle cy={5.6} r={1.9} />
+                {/* Failing AND slow are both true more often than you would think;
+                    collapsing them hides half of what is wrong. */}
+                {alsoSlow && (
+                    <circle cx={12} cy={-12} r={4.5} fill="var(--health-slow)" stroke="var(--ss-background)" strokeWidth={1.5} />
+                )}
+            </g>
+        )
+    }
+    if (status === "down") {
+        return <path d="M-6 -6 L6 6 M6 -6 L-6 6" stroke="var(--ss-foreground)" strokeWidth={3} strokeLinecap="round" />
+    }
+    return null
+}
+
+/** Shared defs the map needs once: the hatch for "down" and the edge arrowheads. */
+export const ShapeDefs = () => (
+    <>
+        <pattern id="ss-hatch-down" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="6" height="6" fill="var(--health-down)" />
+            <line x1="0" y1="0" x2="0" y2="6" stroke="var(--ss-background)" strokeWidth="2.5" />
+        </pattern>
+        {(["healthy", "slow", "failing", "down", "no_data"] as ServiceStatus[]).map(h => (
+            <marker
+                key={h}
+                id={`ss-arrow-${h}`}
+                viewBox="0 0 10 10"
+                refX="5"
+                refY="5"
+                markerWidth="5"
+                markerHeight="5"
+                orient="auto-start-reverse"
+            >
+                <path d="M0 0 L10 5 L0 10 z" fill={healthColor(h)} />
+            </marker>
+        ))}
+    </>
+)
+
+export default Shape
