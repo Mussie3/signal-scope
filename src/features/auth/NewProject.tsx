@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { supabase } from "@/shared/api/supabase"
 import { useSession } from "@/shared/store/session.store"
+import useDismiss from "@/shared/hooks/useDismiss"
 
 /**
  * Create a project, and mint the key that feeds it.
@@ -19,11 +20,16 @@ import { useSession } from "@/shared/store/session.store"
 const NewProject = () => {
     const { session } = useSession()
     const [open, setOpen] = useState(false)
+    const ref = useRef<HTMLDivElement>(null)
+    // useCallback so the listener is not torn down and rebuilt every render.
+    const close = useCallback(() => setOpen(false), [])
     const [slug, setSlug] = useState("")
     const [origins, setOrigins] = useState("")
     const [busy, setBusy] = useState(false)
     const [token, setToken] = useState<string | null>(null)
     const [note, setNote] = useState<string | null>(null)
+
+    useDismiss({ ref, enabled: open, onDismiss: close })
 
     if (!session) return null
 
@@ -68,7 +74,7 @@ const NewProject = () => {
     }
 
     return (
-        <div className="relative">
+        <div className="relative" ref={ref}>
             <button
                 type="button"
                 onClick={() => setOpen(o => !o)}
