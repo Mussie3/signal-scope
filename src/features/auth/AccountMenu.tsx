@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { supabase } from "@/shared/api/supabase"
 import { useSession } from "@/shared/store/session.store"
+import useDismiss from "@/shared/hooks/useDismiss"
 
 /**
  * Sign in, or say who you are.
@@ -13,10 +14,15 @@ import { useSession } from "@/shared/store/session.store"
 const AccountMenu = () => {
     const { session, loading, email } = useSession()
     const [open, setOpen] = useState(false)
+    const ref = useRef<HTMLDivElement>(null)
+    // useCallback so the listener is not torn down and rebuilt every render.
+    const close = useCallback(() => setOpen(false), [])
     const [addr, setAddr] = useState("")
     const [pw, setPw] = useState("")
     const [busy, setBusy] = useState(false)
     const [note, setNote] = useState<string | null>(null)
+
+    useDismiss({ ref, enabled: open, onDismiss: close })
 
     // Nothing at all until the session is known, so a signed-in visitor never
     // sees a "Sign in" button flash before their email appears.
@@ -69,7 +75,7 @@ const AccountMenu = () => {
     }
 
     return (
-        <div className="relative">
+        <div className="relative" ref={ref}>
             <button
                 type="button"
                 onClick={() => setOpen(o => !o)}
