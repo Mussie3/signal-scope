@@ -2,7 +2,7 @@
 
 A real-time service-map visualization for distributed systems. SignalScope renders streaming activity as an interactive system topology — services, connections, request flow, status — instead of abstract logs or static dashboards.
 
-**Live demo:** https://signal-scope-gamma.vercel.app/
+**Live demo:** https://signalscope-live.vercel.app/
 
 ---
 
