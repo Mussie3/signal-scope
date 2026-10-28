@@ -14,6 +14,12 @@ interface Props {
 
 const HIT_AREA_WIDTH = 14
 
+/** The four control points of the single cubic an edge is drawn with. */
+export interface EdgeCurve {
+    d: string
+    p: [number, number][]
+}
+
 /**
  * Edges curve rather than running straight.
  *
@@ -21,8 +27,12 @@ const HIT_AREA_WIDTH = 14
  * bundle of straight diagonals reads as a scribble. A curve that leaves its
  * source vertically and arrives at its target vertically keeps the direction of
  * flow legible even where a dozen edges converge on a shared database.
+ *
+ * The control points come back alongside the path string because the traffic
+ * dots have to be placed ON this curve, and the only way to do that without
+ * measuring the DOM is to evaluate the same cubic we just described.
  */
-export const edgePath = (ax: number, ay: number, bx: number, by: number) => {
+export const edgeCurve = (ax: number, ay: number, bx: number, by: number): EdgeCurve => {
     const dx = bx - ax
     const dy = by - ay
     if (Math.abs(dy) > Math.abs(dx) * 0.35 && dy !== 0) {
@@ -30,13 +40,32 @@ export const edgePath = (ax: number, ay: number, bx: number, by: number) => {
         const y1 = ay + s * 22
         const y2 = by - s * 27
         const my = (y1 + y2) / 2
-        return `M${ax} ${y1} C${ax} ${my}, ${bx} ${my}, ${bx} ${y2}`
+        return {
+            d: `M${ax} ${y1} C${ax} ${my}, ${bx} ${my}, ${bx} ${y2}`,
+            p: [[ax, y1], [ax, my], [bx, my], [bx, y2]],
+        }
     }
     const s = Math.sign(dx) || 1
     const x1 = ax + s * 24
     const x2 = bx - s * 29
     const mx = (x1 + x2) / 2
-    return `M${x1} ${ay} C${mx} ${ay}, ${mx} ${by}, ${x2} ${by}`
+    return {
+        d: `M${x1} ${ay} C${mx} ${ay}, ${mx} ${by}, ${x2} ${by}`,
+        p: [[x1, ay], [mx, ay], [mx, by], [x2, by]],
+    }
+}
+
+/** Standard cubic Bezier evaluation, t in [0, 1]. */
+const pointAt = (p: [number, number][], t: number): [number, number] => {
+    const u = 1 - t
+    const a = u * u * u
+    const b = 3 * u * u * t
+    const c = 3 * u * t * t
+    const e = t * t * t
+    return [
+        a * p[0][0] + b * p[1][0] + c * p[2][0] + e * p[3][0],
+        a * p[0][1] + b * p[1][1] + c * p[2][1] + e * p[3][1],
+    ]
 }
 
 const ConnectionEdge = ({ connection, source, target }: Props) => {
@@ -64,7 +93,7 @@ const ConnectionEdge = ({ connection, source, target }: Props) => {
             : touchesExternal && quiet ? 0.45
                 : 1
 
-    const d = edgePath(source.position.x, source.position.y, target.position.x, target.position.y)
+    const { d, p } = edgeCurve(source.position.x, source.position.y, target.position.x, target.position.y)
     const inFlight = connection.buffer.filter(e => now - e.timestamp < ANIMATION_DURATION_MS)
     const flowing = inFlight.length > 0 && targetStatus !== "down"
 
@@ -92,23 +121,33 @@ const ConnectionEdge = ({ connection, source, target }: Props) => {
                 markerEnd={`url(#ss-arrow-${quiet ? "healthy" : targetStatus})`}
                 pointerEvents="none"
             />
+            {/* Positions are computed, not animated by SMIL.
+                
+                This used to be an <animateMotion> per dot. The component
+                re-renders every frame, which rewrote the element's begin
+                attribute every frame, which restarted the animation before it
+                could advance — 144 dots sat perfectly still at their start
+                points, fading in and out, for the whole life of the feature.
+                
+                Since the curve is ours, evaluating it is both simpler and
+                immune to that: the dot's position is a pure function of how
+                long ago its request happened. */}
             {inFlight.map(event => {
                 const progress = (now - event.timestamp) / ANIMATION_DURATION_MS
                 const fade = progress < 0.1 ? progress / 0.1
                     : progress > 0.9 ? (1 - progress) / 0.1
                         : 1
+                const [cx, cy] = pointAt(p, progress)
                 return (
                     <circle
                         key={event.timestamp}
+                        cx={cx}
+                        cy={cy}
                         r={event.success ? 2.6 : 3.4}
                         fill={event.success ? "var(--dot)" : "var(--health-failing)"}
                         opacity={fade}
                         pointerEvents="none"
-                    >
-                        {/* Following the path itself, so a dot tracks the curve
-                            instead of cutting the corner. */}
-                        <animateMotion dur={`${ANIMATION_DURATION_MS}ms`} begin={`${-progress * ANIMATION_DURATION_MS}ms`} path={d} fill="freeze" />
-                    </circle>
+                    />
                 )
             })}
         </g>

@@ -82,9 +82,14 @@ export const useHistoryTrack = (): HistoryTrack => {
 
             const segments: ServiceStatus[] = []
             for (let b = 0; b < BUCKETS; b++) {
-                // A gap inside an otherwise busy span is traffic having stopped,
-                // which is what "down" means everywhere else on this screen.
-                if (count[b] === 0) segments.push(b === 0 ? "no_data" : "down")
+                // An empty bucket is NOT an outage. Buckets are sliced finer
+                // than the generator's round-robin period, so plenty of them
+                // legitimately contain no event at all; painting those as
+                // "down" chopped the track into grey blocks that looked like
+                // repeated outages. Silence per service is already derived
+                // against a real threshold — the track only reports what it
+                // actually saw.
+                if (count[b] === 0) segments.push("no_data")
                 else if (errors[b] / count[b] > FAILING_ERROR_RATE) segments.push("failing")
                 else if (latency[b] / count[b] > SLOW_LATENCY_MS) segments.push("slow")
                 else segments.push("healthy")
