@@ -28,6 +28,14 @@ declare global {
 
 window.SignalScope = { install }
 
+const originOf = (url: string): string[] => {
+  try {
+    return [new URL(url, location.href).origin]
+  } catch {
+    return []
+  }
+}
+
 /** The <script> that loaded this file, so its attributes can configure it. */
 const self = document.currentScript as HTMLScriptElement | null
 
@@ -43,6 +51,9 @@ if (self?.dataset.service && self.dataset.endpoint && self.dataset.key) {
       : [],
     ...(self.dataset.region ? { region: self.dataset.region } : {}),
     ...(self.dataset.sampleRate ? { sampleRate: Number(self.dataset.sampleRate) } : {}),
+    // Fetching this very script is not a dependency. The tag knows where it
+    // came from, so the page never has to be told.
+    ignoreOrigins: originOf(self.src),
   }
 
   try {
