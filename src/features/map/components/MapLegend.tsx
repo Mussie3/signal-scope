@@ -1,6 +1,5 @@
 import { healthColor } from "./ServiceShape"
-import { KIND_LABEL } from "../kinds"
-import type { ServiceKind, ServiceStatus } from "../types"
+import type { ServiceStatus } from "../types"
 
 /**
  * The legend exists because the map encodes two things at once and neither is
@@ -16,24 +15,15 @@ const STATUSES: Array<{ status: ServiceStatus; label: string }> = [
     { status: "no_data", label: "No data" },
 ]
 
-const KINDS: ServiceKind[] = ["frontend", "api", "database", "cache", "external"]
-
-/** The same silhouettes the map uses, at legend scale. */
-const MiniShape = ({ kind }: { kind: ServiceKind }) => {
-    const p = {
-        fill: "none",
-        stroke: "var(--ss-muted-foreground)",
-        strokeWidth: 1.4,
-        strokeDasharray: kind === "external" ? "3 2" : undefined,
-    }
-    switch (kind) {
-        case "frontend": return <rect x={-7} y={-4} width={14} height={8} rx={2.5} {...p} />
-        case "database": return <rect x={-4.5} y={-4.5} width={9} height={9} rx={2} {...p} />
-        case "cache": return <polygon points="0,-6 6,0 0,6 -6,0" {...p} />
-        case "external": return <polygon points="5.5,0 2.75,4.8 -2.75,4.8 -5.5,0 -2.75,-4.8 2.75,-4.8" {...p} />
-        default: return <circle r={5} {...p} />
-    }
-}
+/**
+ * Kinds are one line of text, not five drawn chips.
+ *
+ * Status needs real swatches because the glyph inside each one is part of what
+ * is being explained. Kind does not: the silhouettes are simple enough that a
+ * typed character carries them, and five SVG chips wrapped the legend onto a
+ * second row, which cost more width than the fidelity was worth.
+ */
+const KIND_GLYPHS = "\u25CB API  \u25AB DB  \u25C7 Cache  \u25AD Frontend  \u2B21 External"
 
 const StatusSwatch = ({ status }: { status: ServiceStatus }) => (
     <svg width={16} height={16} viewBox="-10 -10 20 20" className="shrink-0">
@@ -54,7 +44,7 @@ const StatusSwatch = ({ status }: { status: ServiceStatus }) => (
 
 const MapLegend = () => (
     <div
-        className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 rounded-lg border px-3 py-2 text-[11px] backdrop-blur"
+        className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border px-3 py-2 text-[11px] backdrop-blur"
         style={{
             borderColor: "var(--ss-border)",
             background: "color-mix(in oklch, var(--ss-card) 88%, transparent)",
@@ -68,14 +58,7 @@ const MapLegend = () => (
             </span>
         ))}
         <span aria-hidden className="h-4 w-px" style={{ background: "var(--ss-border)" }} />
-        {KINDS.map(kind => (
-            <span key={kind} className="flex items-center gap-1.5">
-                <svg width={16} height={16} viewBox="-9 -9 18 18" className="shrink-0">
-                    <MiniShape kind={kind} />
-                </svg>
-                {KIND_LABEL[kind]}
-            </span>
-        ))}
+        <span>{KIND_GLYPHS}</span>
     </div>
 )
 
