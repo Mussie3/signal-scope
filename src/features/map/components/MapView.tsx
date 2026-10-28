@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react"
 import usePanZoom from "@/shared/hooks/usePanZoom"
 import { useMapStore } from "../store"
 import { useModeStore } from "../mode.store"
-import { feedMode } from "@/shared/api/supabase"
+import { feedMode, projectSlug } from "@/shared/api/supabase"
 import ConnectionEdge from "./ConnectionEdge"
 import ServiceNode from "./ServiceNode"
 import MapLanes from "./MapLanes"
@@ -18,6 +18,7 @@ const MapView = () => {
     const connectionIds = useMapStore(s => s.connectionIds)
     const selectService = useMapStore(s => s.selectService)
     const canvas = useMapStore(s => s.canvas)
+    const topologyMissing = useMapStore(s => s.topologyMissing)
     const mode = useModeStore(m => m.mode)
     const wrapRef = useRef<HTMLDivElement>(null)
     const fittedFor = useRef<string>("")
@@ -101,10 +102,26 @@ const MapView = () => {
                     fill the gap would mean showing an estate that does not
                     exist. Saying so is the honest way to fill a second. */}
                 {serviceIds.length === 0 && (
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <p className="font-mono text-sm" style={{ color: "var(--ss-muted-foreground)" }}>
-                            {feedMode === "remote" ? "Connecting to your topology..." : "No services reporting."}
-                        </p>
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8">
+                        <div className="max-w-md text-center">
+                            <p className="font-mono text-sm" style={{ color: "var(--ss-muted-foreground)" }}>
+                                {feedMode !== "remote"
+                                    ? "No services reporting."
+                                    : topologyMissing
+                                        ? `No project named "${projectSlug}" is readable with this key.`
+                                        : "Connecting to your topology..."}
+                            </p>
+                            {/* A private project and a misspelt slug are
+                                indistinguishable from the browser, because RLS
+                                hides one rather than erroring. Saying so beats
+                                letting someone conclude their collector is
+                                broken when it is working perfectly. */}
+                            {feedMode === "remote" && topologyMissing && (
+                                <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--ss-muted-foreground)" }}>
+                                    Either the slug is wrong, or the project exists but is not public.
+                                </p>
+                            )}
+                        </div>
                     </div>
                 )}
                 {!ambient && serviceIds.length > 0 && <MapLegend />}
