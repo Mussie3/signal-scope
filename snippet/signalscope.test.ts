@@ -29,14 +29,14 @@ const prng = (seed = 1) => {
 }
 
 const ENDPOINT = 'https://proj.supabase.co/functions/v1/otlp'
-const FIRST_PARTY = 'https://api.icetracker.app'
+const FIRST_PARTY = 'https://api.example-shop.com'
 
 /** A collector whose batches are captured instead of sent. */
 const capturing = (over: Record<string, unknown> = {}) => {
   const sent: unknown[] = []
   const beacons: boolean[] = []
   const c = createCollector({
-    serviceName: 'Ice Tracker Web',
+    serviceName: 'Storefront Web',
     endpoint: ENDPOINT,
     apiKey: 'pk_test',
     firstPartyOrigins: [FIRST_PARTY],
@@ -71,26 +71,26 @@ Deno.test('round trip: page traffic becomes the right topology', async () => {
   const ev = (t: string) => d.events.filter((e) => e.target === t)
 
   // The page itself: only outbound calls, no inbound spans, so an entry point.
-  eq(svc('ice-tracker-web')?.kind, 'frontend', 'page node kind')
-  eq(svc('ice-tracker-web')?.name, 'Ice Tracker Web', 'readable name preserved')
-  eq(svc('ice-tracker-web')?.region, 'eu-central-1', 'region carried through')
+  eq(svc('storefront-web')?.kind, 'frontend', 'page node kind')
+  eq(svc('storefront-web')?.name, 'Storefront Web', 'readable name preserved')
+  eq(svc('storefront-web')?.region, 'eu-central-1', 'region carried through')
 
   // The distinction the whole snippet exists to make.
-  eq(svc('api-icetracker-app')?.kind, 'api', 'first-party origin should be an api')
+  eq(svc('api-example-shop-com')?.kind, 'api', 'first-party origin should be an api')
   eq(svc('js-stripe-com')?.kind, 'external', 'third party should be external')
 
   // Edges run page -> dependency, never the reverse.
-  ok(d.connections.some((x) => x.source === 'ice-tracker-web' && x.target === 'api-icetracker-app'), 'api edge')
-  ok(d.connections.some((x) => x.source === 'ice-tracker-web' && x.target === 'js-stripe-com'), 'stripe edge')
-  ok(!d.connections.some((x) => x.target === 'ice-tracker-web'), 'nothing should point AT the page')
+  ok(d.connections.some((x) => x.source === 'storefront-web' && x.target === 'api-example-shop-com'), 'api edge')
+  ok(d.connections.some((x) => x.source === 'storefront-web' && x.target === 'js-stripe-com'), 'stripe edge')
+  ok(!d.connections.some((x) => x.target === 'storefront-web'), 'nothing should point AT the page')
 
   // Latencies survive the ms -> nanos -> ms round trip intact.
-  const apiLatencies = ev('api-icetracker-app').map((e) => e.latency_ms).sort((a, b) => a - b)
+  const apiLatencies = ev('api-example-shop-com').map((e) => e.latency_ms).sort((a, b) => a - b)
   eq(apiLatencies.join(','), '240,600', 'api call durations')
   eq(ev('js-stripe-com')[0]?.latency_ms, 460, 'stripe duration')
 
   // HTTP 500 is a failure even though the request itself completed.
-  const failed = ev('api-icetracker-app').filter((e) => !e.success)
+  const failed = ev('api-example-shop-com').filter((e) => !e.success)
   eq(failed.length, 1, 'one failed api call')
   eq(failed[0]?.latency_ms, 600, 'the 500 is the slow one')
 
@@ -103,7 +103,7 @@ Deno.test('a 4xx counts as a failure, a 304 does not', async () => {
   c.record({ url: `${FIRST_PARTY}/cached`, startMs: 0, endMs: 10, status: 304 })
   await c.flush()
   const d = derive(sent[0])
-  const evs = d.events.filter((e) => e.target === 'api-icetracker-app')
+  const evs = d.events.filter((e) => e.target === 'api-example-shop-com')
   eq(evs.filter((e) => !e.success).length, 1, 'only the 404 should fail')
   eq(evs.filter((e) => e.success).length, 1, 'the 304 should succeed')
 })
@@ -166,7 +166,7 @@ Deno.test('rubbish and non-http schemes are dropped, never thrown', async () => 
   await c.flush()
   const d = derive(sent[0] ?? { resourceSpans: [] })
   eq(d.connections.length, 1, 'only the real dependency should survive')
-  eq(d.connections[0]?.target, 'api-icetracker-app', 'surviving edge')
+  eq(d.connections[0]?.target, 'api-example-shop-com', 'surviving edge')
 })
 
 Deno.test('a relative url resolves to the page origin, not discarded', async () => {
