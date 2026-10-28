@@ -42,7 +42,10 @@ const MapLanes = ({ height }: { height: number }) => {
                 const code = regionCode(lane.key)
                 const labelEnd = 38 + lane.label.length * LABEL_CH
                 const codeStart = lane.width - 18 - code.length * CODE_CH
-                const codeFits = codeStart - labelEnd > 12
+                // A region key that is already a readable name ("EU Central")
+                // has no separate slug to show, and printing it beside itself
+                // reads as a rendering fault.
+                const codeFits = code !== lane.label && codeStart - labelEnd > 12
 
                 return (
                     <g key={lane.key}>

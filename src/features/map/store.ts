@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { Service, Connection, RequestEvent, Position } from "./types"
 import { seedServices, seedConnections } from "./seed"
 import { computeLayout, type Lane } from "./layout"
+import { feedMode } from "@/shared/api/supabase"
 
 export type LayoutMode = "manual" | "auto"
 
@@ -41,11 +42,25 @@ let manualPositionsById: Record<string, Position> = Object.fromEntries(
     seedServices.map(s => [s.id, s.position]),
 )
 
+
 // Laid out at module load: the default mode is "auto", so the very first paint
 // has to already be layered. Without this the map renders at whatever positions
 // the data happened to carry — which, for a topology derived from traces, is
 // (0,0) for every single node.
-const initialLayout = computeLayout(seedServices, seedConnections)
+/**
+ * The seed is the LOCAL demo, and only the local demo.
+ *
+ * It used to load unconditionally, so a remote-fed deploy painted fifty-six
+ * fictional services and then replaced them with the real topology a moment
+ * later. That flash is worse than an empty canvas: for the first second the
+ * screen is confidently showing someone an estate that does not exist, and on
+ * a monitoring tool that is the one thing that must never happen.
+ */
+const remote = feedMode === "remote"
+const initialServices = remote ? [] : seedServices
+const initialConnections = remote ? [] : seedConnections
+
+const initialLayout = computeLayout(initialServices, initialConnections)
 
 /**
  * Index connections by what they point at.
@@ -67,12 +82,12 @@ const indexByTarget = (connections: Connection[]): Record<string, string[]> => {
 
 export const useMapStore = create<MapState>((set, get) => ({
     servicesById: Object.fromEntries(
-        seedServices.map(s => [s.id, { ...s, position: initialLayout.positions[s.id] ?? s.position }]),
+        initialServices.map(s => [s.id, { ...s, position: initialLayout.positions[s.id] ?? s.position }]),
     ),
-    connectionsById: Object.fromEntries(seedConnections.map(c => [c.id, c])),
-    serviceIds: seedServices.map(s => s.id),
-    connectionIds: seedConnections.map(c => c.id),
-    incomingIdsByTarget: indexByTarget(seedConnections),
+    connectionsById: Object.fromEntries(initialConnections.map(c => [c.id, c])),
+    serviceIds: initialServices.map(s => s.id),
+    connectionIds: initialConnections.map(c => c.id),
+    incomingIdsByTarget: indexByTarget(initialConnections),
     selectedServiceId: null,
     hoveredEntity: null,
     // Layered is the default now: a derived topology has no hand-placed
